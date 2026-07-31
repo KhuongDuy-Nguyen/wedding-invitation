@@ -12,8 +12,8 @@ export const metadata: Metadata = {
   formatDetection: { email: false, address: false, telephone: false },
   robots: { index: true, follow: true },
   icons: {
-    icon: [{ url: withBasePath("/favicon.png?v=3"), type: "image/png", sizes: "192x192" }],
-    shortcut: withBasePath("/favicon.png?v=3"),
+    icon: [{ url: withBasePath("/favicon.png?v=5"), type: "image/png", sizes: "192x192" }],
+    shortcut: withBasePath("/favicon.png?v=5"),
     apple: withBasePath("/images/logo/apple-touch-icon.png?v=3"),
   },
 };

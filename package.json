@@ -7,7 +7,7 @@
   },
   "scripts": {
     "predev": "node scripts/generate-wedding-gallery.mjs",
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "prebuild": "node scripts/generate-wedding-gallery.mjs",
     "build": "next build",
     "start": "serve out",
