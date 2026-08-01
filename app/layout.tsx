@@ -19,9 +19,23 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f7f2e8",
-  colorScheme: "light",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f2e8" },
+    { media: "(prefers-color-scheme: dark)", color: "#171b14" },
+  ],
+  colorScheme: "light dark",
 };
+
+const themeInitializer = `
+  try {
+    const savedTheme = localStorage.getItem("wedding-theme");
+    const theme = savedTheme === "light" || savedTheme === "dark"
+      ? savedTheme
+      : matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  } catch (_) {}
+`;
 
 const rootAssetStyles = {
   "--botanical-frame-image": `url("${withBasePath("/images/decor/botanical-frame.webp")}")`,
@@ -31,8 +45,9 @@ const rootAssetStyles = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi" style={rootAssetStyles}>
+    <html lang="vi" style={rootAssetStyles} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Fonts are shared by the root App Router layout and load once for the site. */}

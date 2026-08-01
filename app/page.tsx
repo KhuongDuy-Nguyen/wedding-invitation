@@ -7,6 +7,7 @@ import { backgroundMusic, backgroundMusicTitle, couplePortraits, logoImage, wedd
 import { weddingData } from "./wedding-data";
 
 type Countdown = { days: number; hours: number; minutes: number; seconds: number };
+type Theme = "light" | "dark";
 
 const HO_CHI_MINH_TIME_ZONE = "Asia/Ho_Chi_Minh";
 const HO_CHI_MINH_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
@@ -23,6 +24,7 @@ const HO_CHI_MINH_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-CA", {
 });
 const REVEAL_SELECTOR =
   ".countdown, .section-heading, .couple-profile, .event-card, .story-photo, .story-list article, .wedding-slider, .calendar-copy, .wedding-calendar, .gift-card";
+const INVITATION_OPEN_ANIMATION_MS = 4090;
 
 function getHoChiMinhNow(): number {
   const parts = HO_CHI_MINH_DATE_TIME_FORMATTER.formatToParts(new Date());
@@ -59,9 +61,63 @@ export default function WeddingInvitation() {
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [musicCollapsed, setMusicCollapsed] = useState(false);
   const [headerCompact, setHeaderCompact] = useState(false);
+  const [theme, setTheme] = useState<Theme>("light");
   const audioRef = useRef<HTMLAudioElement>(null);
   const sliderDragStartXRef = useRef<number | null>(null);
   const thumbnailWheelReadyRef = useRef(true);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const storedTheme = window.localStorage.getItem("wedding-theme");
+    const initialTheme: Theme =
+      storedTheme === "dark" || storedTheme === "light"
+        ? storedTheme
+        : root.dataset.theme === "dark" || media.matches
+          ? "dark"
+          : "light";
+
+    root.dataset.theme = initialTheme;
+    root.style.colorScheme = initialTheme;
+    const syncThemeFrame = window.requestAnimationFrame(() => setTheme(initialTheme));
+
+    const followSystemTheme = (event: MediaQueryListEvent) => {
+      if (window.localStorage.getItem("wedding-theme")) return;
+      const nextTheme: Theme = event.matches ? "dark" : "light";
+      root.dataset.theme = nextTheme;
+      root.style.colorScheme = nextTheme;
+      setTheme(nextTheme);
+    };
+
+    media.addEventListener("change", followSystemTheme);
+    return () => {
+      window.cancelAnimationFrame(syncThemeFrame);
+      media.removeEventListener("change", followSystemTheme);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const root = document.documentElement;
+    const body = document.body;
+    const lockedScrollY = window.scrollY;
+    const previousScrollBehavior = root.style.scrollBehavior;
+
+    root.classList.add("menu-open");
+    body.classList.add("menu-open");
+    body.style.setProperty("--menu-scroll-offset", `${lockedScrollY}px`);
+
+    return () => {
+      root.classList.remove("menu-open");
+      body.classList.remove("menu-open");
+      body.style.removeProperty("--menu-scroll-offset");
+
+      root.style.scrollBehavior = "auto";
+      window.scrollTo(0, lockedScrollY);
+      root.style.scrollBehavior = previousScrollBehavior;
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     document.body.classList.toggle("invitation-locked", !invitationOpen);
@@ -150,9 +206,12 @@ export default function WeddingInvitation() {
     if (backgroundMusic && audioRef.current) {
       void audioRef.current.play().then(() => setMusicPlaying(true)).catch(() => setMusicPlaying(false));
     }
+    const openingDuration = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? 100
+      : INVITATION_OPEN_ANIMATION_MS;
     window.setTimeout(() => {
       setInvitationOpen(true);
-    }, 1500);
+    }, openingDuration);
   };
 
   const toggleMusic = () => {
@@ -165,6 +224,14 @@ export default function WeddingInvitation() {
       audio.pause();
       setMusicPlaying(false);
     }
+  };
+
+  const toggleTheme = () => {
+    const nextTheme: Theme = theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = nextTheme;
+    document.documentElement.style.colorScheme = nextTheme;
+    window.localStorage.setItem("wedding-theme", nextTheme);
+    setTheme(nextTheme);
   };
 
   const showPreviousPhoto = () => {
@@ -200,10 +267,15 @@ export default function WeddingInvitation() {
           <div className="gate-stage">
             <div className="gate-envelope">
               <div className="envelope-back" aria-hidden="true" />
-              <div className="envelope-letter" aria-hidden="true">
-                <p className="gate-kicker">Trân trọng kính mời bạn đến chung vui</p>
-                <img className="gate-logo" src={withBasePath("/images/logo/wedding-lockup.webp")} alt="" width="640" height="895" decoding="async" />
-                <p className="gate-venue">{weddingData.invitation.venue}</p>
+              <div className="envelope-letter-shell" aria-hidden="true">
+                <div className="envelope-letter">
+                  <div className="envelope-letter-face envelope-letter-front">
+                    <p className="gate-kicker">Trân trọng kính mời bạn đến chung vui</p>
+                    <img className="gate-logo" src={withBasePath("/images/logo/wedding-lockup.webp")} alt="" width="640" height="895" decoding="async" />
+                    <p className="gate-venue">{weddingData.invitation.venue}</p>
+                  </div>
+                  <div className="envelope-letter-face envelope-letter-back" />
+                </div>
               </div>
               <div className="envelope-pocket" aria-hidden="true" />
               <div className="envelope-flap" aria-hidden="true" />
@@ -221,7 +293,7 @@ export default function WeddingInvitation() {
         </section>
       )}
 
-      <header className={`site-header${headerCompact ? " is-compact" : ""}`}>
+      <header className={`site-header${headerCompact ? " is-compact" : ""}${menuOpen ? " menu-open" : ""}`}>
         <a className={`monogram${logoImage ? " has-image" : ""}`} href="#home" aria-label="Duy và Lan · Về đầu trang">
           {logoImage ? (
             <img className="monogram-logo-image" src={withBasePath(logoImage)} alt="Logo Duy và Lan" width="512" height="512" decoding="async" />
@@ -229,9 +301,6 @@ export default function WeddingInvitation() {
             <><span className="monogram-d">D</span><span className="rings-icon rings-monogram"><i /><i /></span><span className="monogram-l">L</span></>
           )}
         </a>
-        <button className="menu-button" aria-expanded={menuOpen} aria-controls="main-navigation" onClick={() => setMenuOpen((open) => !open)}>
-          <span /><span /><span /><span className="sr-only">Mở menu</span>
-        </button>
         <nav id="main-navigation" className={menuOpen ? "navigation is-open" : "navigation"} aria-label="Điều hướng chính">
           <a href="#home" onClick={() => setMenuOpen(false)}>Trang chủ</a>
           <a href="#event" onClick={() => setMenuOpen(false)}>Ba ngày vui</a>
@@ -239,6 +308,21 @@ export default function WeddingInvitation() {
           <a href="#gallery" onClick={() => setMenuOpen(false)}>Album</a>
           <a href="#wishes" onClick={() => setMenuOpen(false)}>Lời chúc</a>
         </nav>
+        <div className="header-controls">
+          <button
+            className="theme-toggle"
+            type="button"
+            aria-label={theme === "dark" ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"}
+            aria-pressed={theme === "dark"}
+            onClick={toggleTheme}
+          >
+            <span className="theme-toggle-icon" aria-hidden="true">{theme === "dark" ? "☾" : "☀"}</span>
+            <span className="theme-toggle-label">{theme === "dark" ? "Chế độ sáng" : "Chế độ tối"}</span>
+          </button>
+          <button className="menu-button" aria-expanded={menuOpen} aria-controls="main-navigation" onClick={() => setMenuOpen((open) => !open)}>
+            <span /><span /><span /><span className="sr-only">{menuOpen ? "Đóng menu" : "Mở menu"}</span>
+          </button>
+        </div>
       </header>
 
       {backgroundMusic && (
@@ -266,7 +350,13 @@ export default function WeddingInvitation() {
                 aria-pressed={musicPlaying}
                 onClick={toggleMusic}
               >
-                <span aria-hidden="true">{musicPlaying ? "Ⅱ" : "▶"}</span>
+                <svg className="music-action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  {musicPlaying ? (
+                    <path d="M9 7.5v9M15 7.5v9" />
+                  ) : (
+                    <path d="m9 7 8 5-8 5V7Z" />
+                  )}
+                </svg>
               </button>
             </div>
           )}
