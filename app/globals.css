@@ -1409,6 +1409,23 @@ footer h2 {
   transform: rotateY(-180deg);
 }
 
+/* Mobile browsers can still hit-test the hidden side of a 3D card. */
+.event-card-front {
+  pointer-events: auto;
+}
+
+.event-card-back {
+  pointer-events: none;
+}
+
+.event-card.is-flipped .event-card-front {
+  pointer-events: none;
+}
+
+.event-card.is-flipped .event-card-back {
+  pointer-events: auto;
+}
+
 .event-card-face {
   position: absolute;
   inset: 0;
