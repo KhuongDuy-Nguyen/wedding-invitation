@@ -72,14 +72,14 @@ export const weddingData = {
   ],
   story: [
     {
-      year: "2025",
-      title: "Lần đầu gặp nhau",
-      text: "Năm 2025, chúng mình gặp nhau và bắt đầu từ những câu chuyện rất đỗi bình thường. Càng trò chuyện, cả hai càng nhận ra có nhiều điều đồng điệu trong cách nghĩ và cách nhìn về cuộc sống. Từ những buổi gặp gỡ đầu tiên, chúng mình dần trở thành người có thể chia sẻ với nhau cả niềm vui lẫn những ngày không mấy dễ dàng. Một mối quan hệ tự nhiên cứ thế lớn lên qua sự chân thành và quan tâm mỗi ngày.",
+      year: "6/2025",
+      title: "Lần đầu gặp gỡ",
+      text: "Từ những cuộc trò chuyện bình dị đầu tiên, tình cảm cứ thế âm thầm lớn dần qua từng ngày sẻ chia — cùng vui, cùng buồn và luôn hiện diện bên nhau. Không hề vội vã, chỉ bằng sự chân thành, hai người xa lạ đã tìm thấy sự đồng điệu để tin tưởng nắm chặt tay nhau bắt đầu một tình yêu đẹp.",
     },
     {
       year: "2026",
       title: "Cùng nhau về chung một nhà",
-      text: "Sau khoảng thời gian cùng tìm hiểu, đồng hành và trưởng thành, chúng mình quyết định bước sang một chặng đường mới vào năm 2026. Đám cưới là dịp để cả hai chính thức giới thiệu lựa chọn của mình với gia đình, bạn bè và những người thân yêu. Chúng mình biết cuộc sống phía trước sẽ có nhiều điều phải học, nhưng cũng tin rằng sự tôn trọng, sẻ chia và đồng lòng sẽ giúp cả hai xây dựng một gia đình ấm áp.",
+      text: "Hơn một năm bên nhau là quãng thời gian đủ để chúng mình thấu hiểu, đồng hành và cùng nhau trưởng thành. Được sự yêu thương và chúc phúc từ gia đình hai bên, chúng mình hạnh phúc quyết định về chung một nhà.\n\nĐám cưới hôm nay là dấu mốc thiêng liêng mở ra một chặng đường mới, nơi hai đứa sẽ cùng nhau vun vén một tổ ấm bình yên và trọn vẹn hạnh phúc.",
     },
   ],
   bank: {

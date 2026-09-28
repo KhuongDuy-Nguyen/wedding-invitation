@@ -39,8 +39,8 @@ const themeInitializer = `
 
 const rootAssetStyles = {
   "--botanical-frame-image": `url("${withBasePath("/images/decor/botanical-frame.webp")}")`,
-  "--gallery-portrait-image": `url("${withBasePath("/images/01-ROZ02408.JPG")}")`,
-  "--gallery-landscape-image": `url("${withBasePath("/images/02-ROZ01985.JPG")}")`,
+  "--gallery-portrait-image": `url("${withBasePath("/images/01-ROZ02396.JPG")}")`,
+  "--gallery-landscape-image": `url("${withBasePath("/images/02-ROZ01986.JPG")}")`,
 } as CSSProperties;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -57,7 +57,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Bodoni+Moda:opsz,wght@6..96,400;6..96,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&display=swap"
         />
       </head>
-      <body>{children}</body>
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

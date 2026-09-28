@@ -24,7 +24,7 @@ const HO_CHI_MINH_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-CA", {
 });
 const REVEAL_SELECTOR =
   ".countdown, .section-heading, .couple-profile, .event-card, .story-photo, .story-list article, .wedding-slider, .calendar-copy, .wedding-calendar, .gift-card";
-const INVITATION_OPEN_ANIMATION_MS = 4090;
+const INVITATION_OPEN_ANIMATION_MS = 1850;
 
 function getHoChiMinhNow(): number {
   const parts = HO_CHI_MINH_DATE_TIME_FORMATTER.formatToParts(new Date());
@@ -206,12 +206,17 @@ export default function WeddingInvitation() {
     if (backgroundMusic && audioRef.current) {
       void audioRef.current.play().then(() => setMusicPlaying(true)).catch(() => setMusicPlaying(false));
     }
-    const openingDuration = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? 100
-      : INVITATION_OPEN_ANIMATION_MS;
+    const openingDuration = INVITATION_OPEN_ANIMATION_MS;
     window.setTimeout(() => {
       setInvitationOpen(true);
     }, openingDuration);
+  };
+
+  const skipInvitation = () => {
+    if (backgroundMusic && audioRef.current && !musicPlaying) {
+      void audioRef.current.play().then(() => setMusicPlaying(true)).catch(() => setMusicPlaying(false));
+    }
+    setInvitationOpen(true);
   };
 
   const toggleMusic = () => {
@@ -264,30 +269,136 @@ export default function WeddingInvitation() {
           aria-label="Mở thiệp cưới"
         >
           <div className="gate-backdrop" aria-hidden="true" />
+          <div className="gate-ambient-glow" aria-hidden="true" />
+
+          {/* Floating romantic ambient petals */}
+          <div className="gate-petals" aria-hidden="true">
+            <span className="gate-petal p-1" />
+            <span className="gate-petal p-2" />
+            <span className="gate-petal p-3" />
+            <span className="gate-petal p-4" />
+            <span className="gate-petal p-5" />
+            <span className="gate-petal p-6" />
+            <span className="gate-petal p-7" />
+            <span className="gate-petal p-8" />
+          </div>
+
+          {/* Quick skip button */}
+          <button
+            type="button"
+            className="gate-skip-btn"
+            onClick={skipInvitation}
+            aria-label="Vào xem thiệp ngay không cần hiệu ứng"
+          >
+            <span>Vào xem ngay</span>
+            <svg viewBox="0 0 20 20" fill="currentColor" width="13" height="13" aria-hidden="true">
+              <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+            </svg>
+          </button>
+
           <div className="gate-stage">
             <div className="gate-envelope">
-              <div className="envelope-back" aria-hidden="true" />
-              <div className="envelope-letter-shell" aria-hidden="true">
-                <div className="envelope-letter">
-                  <div className="envelope-letter-face envelope-letter-front">
-                    <p className="gate-kicker">Trân trọng kính mời bạn đến chung vui</p>
-                    <img className="gate-logo" src={withBasePath("/images/logo/wedding-lockup.webp")} alt="" width="640" height="895" decoding="async" />
-                    <p className="gate-venue">{weddingData.invitation.venue}</p>
-                  </div>
-                  <div className="envelope-letter-face envelope-letter-back" />
+              {/* Envelope Back Wall & Golden Satin Lining */}
+              <div className="envelope-back" aria-hidden="true">
+                <div className="envelope-lining" />
+                <div className="envelope-gold-rim" />
+              </div>
+
+              {/* Inside Wedding Invitation Letter (Slides up gracefully when opened) */}
+              <div className="envelope-letter" aria-hidden="true">
+                <div className="envelope-letter-face">
+                  <p className="gate-kicker">Trân trọng kính mời bạn đến chung vui</p>
+                  <img
+                    className="gate-logo"
+                    src={withBasePath("/images/logo/wedding-lockup.webp")}
+                    alt="Duy & Lan"
+                    width="640"
+                    height="895"
+                    decoding="async"
+                  />
+                  <p className="gate-venue">{weddingData.invitation.venue}</p>
                 </div>
               </div>
-              <div className="envelope-pocket" aria-hidden="true" />
-              <div className="envelope-flap" aria-hidden="true" />
-              <button
-                className="envelope-seal"
-                type="button"
-                aria-label="Mở thiệp"
-                onClick={openInvitation}
-                disabled={invitationOpening}
-              >
-                <img src={withBasePath("/images/decor/heart-rings-icon.webp")} alt="" aria-hidden="true" width="728" height="761" decoding="async" />
-              </button>
+
+              {/* Envelope Front Pocket (Lower Triangular Folds in Royal Crimson Velvet) */}
+              <div className="envelope-pocket" aria-hidden="true">
+                <div className="envelope-stardust-shimmer" />
+                <div className="pocket-gold-trim" />
+                <img
+                  className="envelope-corner corner-bl"
+                  src={withBasePath("/images/decor/gold-corner-filigree.png")}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <img
+                  className="envelope-corner corner-br"
+                  src={withBasePath("/images/decor/gold-corner-filigree.png")}
+                  alt=""
+                  aria-hidden="true"
+                />
+              </div>
+
+              {/* 3D Triangular Top Flap */}
+              <div className="envelope-flap" aria-hidden="true">
+                <div className="envelope-flap-face flap-front">
+                  <div className="envelope-stardust-shimmer" />
+                  <div className="flap-gold-trim" />
+                  <img
+                    className="envelope-corner corner-tl"
+                    src={withBasePath("/images/decor/gold-corner-filigree.png")}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                  <img
+                    className="envelope-corner corner-tr"
+                    src={withBasePath("/images/decor/gold-corner-filigree.png")}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                </div>
+                <div className="envelope-flap-face flap-back">
+                  <div className="flap-lining" />
+                </div>
+              </div>
+
+              {/* Center Medallion & Tassel Seal Button */}
+              <div className="envelope-seal-wrapper">
+                <button
+                  className="envelope-seal-btn"
+                  type="button"
+                  aria-label="Chạm để mở thiệp cưới"
+                  onClick={openInvitation}
+                  disabled={invitationOpening}
+                >
+                  <span className="seal-pulse-glow" aria-hidden="true" />
+                  <img
+                    className="seal-disc-img"
+                    src={withBasePath("/images/decor/song-hy-medallion.png")}
+                    alt="Long Phụng Song Hỷ"
+                    width="512"
+                    height="512"
+                    decoding="async"
+                  />
+                  {/* Flowing Red Silk Tassel with Jade Bead */}
+                  <span className="envelope-tassel-wrapper" aria-hidden="true">
+                    <img
+                      className="envelope-tassel-img"
+                      src={withBasePath("/images/decor/red-silk-tassel.png")}
+                      alt=""
+                      width="300"
+                      height="533"
+                      decoding="async"
+                    />
+                  </span>
+                </button>
+              </div>
+
+              {/* Floating Call to Action Prompt */}
+              <div className="envelope-open-prompt" aria-hidden="true">
+                <span className="prompt-sparkle">✧</span>
+                <span className="prompt-text">Chạm mở thiệp</span>
+                <span className="prompt-sparkle">✧</span>
+              </div>
             </div>
           </div>
         </section>
@@ -380,7 +491,7 @@ export default function WeddingInvitation() {
           <a className="scroll-cue" href="#event"><span aria-hidden="true">↓</span>Cuộn để khám phá</a>
         </div>
         <div className="hero-photo">
-          <img src={withBasePath("/images/01-ROZ02408.JPG")} alt="Ảnh cưới của Duy và Lan" width="1200" height="1800" fetchPriority="high" decoding="async" />
+          <img src={withBasePath("/images/01-ROZ02396.JPG")} alt="Ảnh cưới của Duy và Lan" width="1200" height="1800" fetchPriority="high" decoding="async" />
         </div>
       </section>
 
@@ -492,7 +603,7 @@ export default function WeddingInvitation() {
         </div>
         <div className="story-layout">
           <div className="story-photo">
-            <img src={withBasePath("/images/02-ROZ01985.JPG")} alt="Ảnh kỷ niệm của Duy và Lan" width="1800" height="1200" loading="lazy" decoding="async" />
+            <img src={withBasePath("/images/02-ROZ01986.JPG")} alt="Ảnh kỷ niệm của Duy và Lan" width="1800" height="1200" loading="lazy" decoding="async" />
           </div>
           <div className="story-list">
             {weddingData.story.map((item) => (
