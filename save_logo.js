@@ -1,2 +1,0 @@
-// Temporary script removed
-export {};
