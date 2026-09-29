@@ -11,7 +11,8 @@
     "prebuild": "node scripts/generate-wedding-gallery.mjs",
     "build": "next build",
     "start": "serve out",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern out --ignore-pattern .next"
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern out --ignore-pattern .next",
+    "check": "npm run lint && npm run build"
   },
   "dependencies": {
     "next": "16.2.6",
