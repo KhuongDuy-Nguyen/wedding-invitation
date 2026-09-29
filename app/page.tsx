@@ -1133,17 +1133,17 @@ export default function WeddingInvitation() {
               {thumbnailWindow.map(({ index, offset }) => {
                 const photo = weddingPhotos[index];
                 return (
-                <button
-                  className={offset === 0 ? "is-active" : ""}
-                  type="button"
-                  data-photo-index={index}
-                  aria-label={`Xem ảnh ${index + 1}`}
-                  aria-current={offset === 0 ? "true" : undefined}
-                  onClick={() => setActivePhotoIndex(index)}
-                  key={`${photo.src}-${offset}`}
-                >
-                  <img src={withBasePath(photo.src)} alt="" loading="lazy" decoding="async" />
-                </button>
+                  <button
+                    className={offset === 0 ? "is-active" : ""}
+                    type="button"
+                    data-photo-index={index}
+                    aria-label={`Xem ảnh ${index + 1}`}
+                    aria-current={offset === 0 ? "true" : undefined}
+                    onClick={() => setActivePhotoIndex(index)}
+                    key={`${photo.src}-${offset}`}
+                  >
+                    <img src={withBasePath(photo.src)} alt="" loading="lazy" decoding="async" />
+                  </button>
                 );
               })}
             </div>
@@ -1401,9 +1401,9 @@ export default function WeddingInvitation() {
                       onClick={() => copyToClipboard(currentBank.accountNumber.replace(/\s+/g, ""), "số tài khoản")}
                       aria-label="Sao chép số tài khoản"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{flexShrink: 0}}>
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                       </svg>
                       <span>Sao chép STK: <strong>{currentBank.accountNumber}</strong></span>
                     </button>
@@ -1417,104 +1417,104 @@ export default function WeddingInvitation() {
 
         {/* Wall of Wishes / Sổ lưu bút chúc phúc */}
         <div className="wishes-wall" id="guestbook-wall">
-            <div className="wall-header">
-              <p className="section-kicker">Guestbook</p>
-              <h3>Sổ lưu bút chúc phúc</h3>
-              <div className="wall-subtitle-row">
-                <p className="wall-subtitle" suppressHydrationWarning>
-                  Những lời chúc yêu thương đã gửi đến tụi mình
-                </p>
-                {weddingData.googleSheetScriptUrl && (
-                  <button
-                    type="button"
-                    className="refresh-wishes-btn"
-                    onClick={() => void fetchWishesFromSheet(true)}
-                    disabled={isLoadingWishes}
-                    title="Cập nhật lời chúc mới nhất từ Google Sheets"
-                  >
-                    <span className={`sync-icon${isLoadingWishes ? " is-spinning" : ""}`} aria-hidden="true">↻</span>
-                    <span>{isLoadingWishes ? "Đang đồng bộ..." : "Làm mới"}</span>
-                  </button>
+          <div className="wall-header">
+            <p className="section-kicker">Guestbook</p>
+            <h3>Sổ lưu bút chúc phúc</h3>
+            <div className="wall-subtitle-row">
+              <p className="wall-subtitle" suppressHydrationWarning>
+                Những lời chúc yêu thương đã gửi đến tụi mình
+              </p>
+              {weddingData.googleSheetScriptUrl && (
+                <button
+                  type="button"
+                  className="refresh-wishes-btn"
+                  onClick={() => void fetchWishesFromSheet(true)}
+                  disabled={isLoadingWishes}
+                  title="Cập nhật lời chúc mới nhất từ Google Sheets"
+                >
+                  <span className={`sync-icon${isLoadingWishes ? " is-spinning" : ""}`} aria-hidden="true">↻</span>
+                  <span>{isLoadingWishes ? "Đang đồng bộ..." : "Làm mới"}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="wishes-grid" suppressHydrationWarning>
+            {paginatedWishes.map((wish, index) => {
+              return (
+                <article className="wish-card" key={`${wish.name}-${index}-${wishesPage}`}>
+                  <div className="wish-card-header">
+                    <div className="wish-avatar" aria-hidden="true">
+                      {wish.name.trim().charAt(0).toUpperCase() || "♥"}
+                    </div>
+                    <div className="wish-meta">
+                      <strong>{wish.name}</strong>
+                      <div className="wish-tags">
+                        <span className="wish-relation">{wish.relation}</span>
+                      </div>
+                    </div>
+                    <time className="wish-date">{wish.date}</time>
+                  </div>
+                  <p className="wish-message">{wish.message}</p>
+                </article>
+              );
+            })}
+          </div>
+
+          {totalWishesPages > 1 && (
+            <nav className="wishes-pagination" aria-label="Phân trang lời chúc">
+              <button
+                type="button"
+                className="page-btn page-nav-btn"
+                onClick={() => {
+                  setWishesPage((p) => Math.max(1, p - 1));
+                  document.getElementById("guestbook-wall")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }}
+                disabled={wishesPage <= 1}
+                aria-label="Trang trước"
+              >
+                ← Trước
+              </button>
+
+              <div className="page-numbers">
+                {getPageNumbers(wishesPage, totalWishesPages).map((item, idx) =>
+                  typeof item === "number" ? (
+                    <button
+                      key={`page-${item}`}
+                      type="button"
+                      className={`page-btn page-num-btn${wishesPage === item ? " is-active" : ""}`}
+                      onClick={() => {
+                        setWishesPage(item);
+                        document.getElementById("guestbook-wall")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                      }}
+                      aria-current={wishesPage === item ? "page" : undefined}
+                    >
+                      {item}
+                    </button>
+                  ) : (
+                    <span key={`ellipsis-${idx}`} className="page-ellipsis" aria-hidden="true">
+                      …
+                    </span>
+                  )
                 )}
               </div>
-            </div>
 
-            <div className="wishes-grid" suppressHydrationWarning>
-              {paginatedWishes.map((wish, index) => {
-                return (
-                  <article className="wish-card" key={`${wish.name}-${index}-${wishesPage}`}>
-                    <div className="wish-card-header">
-                      <div className="wish-avatar" aria-hidden="true">
-                        {wish.name.trim().charAt(0).toUpperCase() || "♥"}
-                      </div>
-                      <div className="wish-meta">
-                        <strong>{wish.name}</strong>
-                        <div className="wish-tags">
-                          <span className="wish-relation">{wish.relation}</span>
-                        </div>
-                      </div>
-                      <time className="wish-date">{wish.date}</time>
-                    </div>
-                    <p className="wish-message">{wish.message}</p>
-                  </article>
-                );
-              })}
-            </div>
-
-            {totalWishesPages > 1 && (
-              <nav className="wishes-pagination" aria-label="Phân trang lời chúc">
-                <button
-                  type="button"
-                  className="page-btn page-nav-btn"
-                  onClick={() => {
-                    setWishesPage((p) => Math.max(1, p - 1));
-                    document.getElementById("guestbook-wall")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                  }}
-                  disabled={wishesPage <= 1}
-                  aria-label="Trang trước"
-                >
-                  ← Trước
-                </button>
-
-                <div className="page-numbers">
-                  {getPageNumbers(wishesPage, totalWishesPages).map((item, idx) =>
-                    typeof item === "number" ? (
-                      <button
-                        key={`page-${item}`}
-                        type="button"
-                        className={`page-btn page-num-btn${wishesPage === item ? " is-active" : ""}`}
-                        onClick={() => {
-                          setWishesPage(item);
-                          document.getElementById("guestbook-wall")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                        }}
-                        aria-current={wishesPage === item ? "page" : undefined}
-                      >
-                        {item}
-                      </button>
-                    ) : (
-                      <span key={`ellipsis-${idx}`} className="page-ellipsis" aria-hidden="true">
-                        …
-                      </span>
-                    )
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  className="page-btn page-nav-btn"
-                  onClick={() => {
-                    setWishesPage((p) => Math.min(totalWishesPages, p + 1));
-                    document.getElementById("guestbook-wall")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-                  }}
-                  disabled={wishesPage >= totalWishesPages}
-                  aria-label="Trang sau"
-                >
-                  Sau →
-                </button>
-              </nav>
-            )}
-          </div>
-        </section>
+              <button
+                type="button"
+                className="page-btn page-nav-btn"
+                onClick={() => {
+                  setWishesPage((p) => Math.min(totalWishesPages, p + 1));
+                  document.getElementById("guestbook-wall")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }}
+                disabled={wishesPage >= totalWishesPages}
+                aria-label="Trang sau"
+              >
+                Sau →
+              </button>
+            </nav>
+          )}
+        </div>
+      </section>
 
       {/* QR Zoom Modal */}
       {qrModalOpen && (
@@ -1550,9 +1550,9 @@ export default function WeddingInvitation() {
               style={{ marginTop: "14px", width: "100%" }}
               onClick={() => copyToClipboard(currentBank.accountNumber.replace(/\s+/g, ""), "số tài khoản")}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{flexShrink: 0}}>
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>
               <span>Sao chép STK: <strong>{currentBank.accountNumber}</strong></span>
             </button>
