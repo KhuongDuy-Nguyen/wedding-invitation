@@ -1,13 +1,21 @@
 /* eslint-disable @next/next/no-img-element -- Static media is pre-optimized and served directly by Cloudflare. */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { withBasePath } from "./asset-path";
 import { backgroundMusic, backgroundMusicTitle, couplePortraits, logoImage, weddingPhotos } from "./generated-wedding-gallery";
 import { weddingData } from "./wedding-data";
 
 type Countdown = { days: number; hours: number; minutes: number; seconds: number };
 type Theme = "light" | "dark";
+type WishItem = {
+  name: string;
+  relation: string;
+  attendance?: string;
+  guestsCount?: string;
+  message: string;
+  date: string;
+};
 
 const HO_CHI_MINH_TIME_ZONE = "Asia/Ho_Chi_Minh";
 const HO_CHI_MINH_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
@@ -23,8 +31,30 @@ const HO_CHI_MINH_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-CA", {
   hourCycle: "h23",
 });
 const REVEAL_SELECTOR =
-  ".countdown, .section-heading, .couple-profile, .event-card, .story-photo, .story-list article, .wedding-slider, .calendar-copy, .wedding-calendar, .gift-card";
+  ".countdown, .section-heading, .couple-profile, .event-card, .story-photo, .story-list article, .wedding-slider, .calendar-copy, .wedding-calendar, .gift-card, .wishes-form-card, .wishes-wall";
 const INVITATION_OPEN_ANIMATION_MS = 1850;
+
+function getAttendanceBadge(attendance?: string): { label: string; className: string } | null {
+  if (!attendance) return null;
+  const lower = attendance.toLowerCase();
+  if (
+    lower.includes("sẽ tham dự") ||
+    lower.includes("sẽ đến") ||
+    (lower.includes("tham dự") && !lower.includes("không"))
+  ) {
+    return { label: "Sẽ tham dự", className: "is-attending" };
+  }
+  if (lower.includes("không") || lower.includes("từ xa")) {
+    return {
+      label: attendance.includes("từ xa") ? "Gửi chúc từ xa" : "Không tham dự",
+      className: "is-absent",
+    };
+  }
+  if (lower.includes("chắc") || lower.includes("chưa")) {
+    return { label: "Chưa chắc chắn", className: "is-tentative" };
+  }
+  return { label: attendance, className: "is-tentative" };
+}
 
 function getHoChiMinhNow(): number {
   const parts = HO_CHI_MINH_DATE_TIME_FORMATTER.formatToParts(new Date());
@@ -62,9 +92,40 @@ export default function WeddingInvitation() {
   const [musicCollapsed, setMusicCollapsed] = useState(false);
   const [headerCompact, setHeaderCompact] = useState(false);
   const [theme, setTheme] = useState<Theme>("light");
+  const [copyToast, setCopyToast] = useState<string | null>(null);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState<number | null>(null);
+  const [guestName, setGuestName] = useState("");
+  const [guestRelation, setGuestRelation] = useState("Bạn chung");
+  const [guestMessage, setGuestMessage] = useState("");
+  const [isSubmittingWish, setIsSubmittingWish] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [wishesList, setWishesList] = useState<WishItem[]>(weddingData.defaultWishes);
+  const [wishesPage, setWishesPage] = useState(1);
+  const WISHES_PER_PAGE = 6;
+  const totalWishesPages = Math.ceil(wishesList.length / WISHES_PER_PAGE) || 1;
+  const paginatedWishes = wishesList.slice(
+    (wishesPage - 1) * WISHES_PER_PAGE,
+    wishesPage * WISHES_PER_PAGE
+  );
+
+  const getPageNumbers = (current: number, total: number): (number | string)[] => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 4) {
+      return [1, 2, 3, 4, 5, "...", total];
+    }
+    if (current >= total - 3) {
+      return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+    }
+    return [1, "...", current - 1, current, current + 1, "...", total];
+  };
   const audioRef = useRef<HTMLAudioElement>(null);
   const sliderDragStartXRef = useRef<number | null>(null);
   const thumbnailWheelReadyRef = useRef(true);
+  const lightboxDragStartXRef = useRef<number | null>(null);
+  const lightboxIsDraggingRef = useRef(false);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -259,6 +320,168 @@ export default function WeddingInvitation() {
     },
   );
 
+  const copyToClipboard = (text: string, label = "thành công") => {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text);
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+    setCopyToast(`Đã sao chép ${label}!`);
+    window.setTimeout(() => setCopyToast(null), 2500);
+  };
+
+  const [isLoadingWishes, setIsLoadingWishes] = useState(false);
+
+  const fetchWishesFromSheet = useCallback(async () => {
+    if (!weddingData.googleSheetScriptUrl) return;
+    setIsLoadingWishes(true);
+    try {
+      const url = `${weddingData.googleSheetScriptUrl}${weddingData.googleSheetScriptUrl.includes("?") ? "&" : "?"}_t=${Date.now()}`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (data && data.status === "success" && Array.isArray(data.wishes)) {
+        const sheetWishes: WishItem[] = data.wishes.map((item: Record<string, unknown>) => ({
+          name: String(item.name || "Khách mời"),
+          relation: String(item.relation || "Bạn chung"),
+          attendance: item.attendance ? String(item.attendance) : undefined,
+          guestsCount: item.guestsCount ? String(item.guestsCount) : undefined,
+          message: String(item.message || ""),
+          date:
+            typeof item.date === "string" && item.date.includes(" ")
+              ? item.date.split(" ")[0]
+              : String(item.date || "28/09/2026"),
+        }));
+
+        setWishesList([...sheetWishes, ...weddingData.defaultWishes]);
+        setWishesPage(1);
+        try {
+          window.localStorage.setItem("wedding_wishes", JSON.stringify(sheetWishes));
+        } catch {
+          // ignore
+        }
+      }
+    } catch (err) {
+      console.warn("Could not fetch wishes from Google Sheet:", err);
+    } finally {
+      setIsLoadingWishes(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = window.localStorage.getItem("wedding_wishes");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setWishesList([...parsed, ...weddingData.defaultWishes]);
+          }
+        }
+      } catch {
+        // ignore
+      }
+      void fetchWishesFromSheet();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchWishesFromSheet]);
+
+  useEffect(() => {
+    if (lightboxPhotoIndex === null) return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+    };
+
+    window.addEventListener("wheel", preventScroll, { passive: false });
+    window.addEventListener("touchmove", preventScroll, { passive: false });
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxPhotoIndex(null);
+      if (e.key === "ArrowLeft") {
+        setLightboxPhotoIndex((cur) =>
+          cur !== null ? (cur - 1 + weddingPhotos.length) % weddingPhotos.length : null,
+        );
+      }
+      if (e.key === "ArrowRight") {
+        setLightboxPhotoIndex((cur) =>
+          cur !== null ? (cur + 1) % weddingPhotos.length : null,
+        );
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      window.removeEventListener("wheel", preventScroll);
+      window.removeEventListener("touchmove", preventScroll);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [lightboxPhotoIndex]);
+
+  const handleWishSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!guestName.trim() || !guestMessage.trim()) return;
+
+    setIsSubmittingWish(true);
+    const newWish: WishItem = {
+      name: guestName.trim(),
+      relation: guestRelation,
+      message: guestMessage.trim(),
+      date: new Date().toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }),
+    };
+
+    if (weddingData.googleSheetScriptUrl) {
+      try {
+        await fetch(weddingData.googleSheetScriptUrl, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newWish),
+        });
+        window.setTimeout(() => {
+          void fetchWishesFromSheet();
+        }, 1500);
+      } catch (err) {
+        console.warn("Could not sync to Google Sheet:", err);
+      }
+    }
+
+    const updated = [newWish, ...wishesList];
+    setWishesList(updated);
+    setWishesPage(1);
+    try {
+      const localSaved = JSON.parse(window.localStorage.getItem("wedding_wishes") || "[]");
+      localSaved.unshift(newWish);
+      window.localStorage.setItem("wedding_wishes", JSON.stringify(localSaved));
+    } catch {
+      // ignore
+    }
+
+    setIsSubmittingWish(false);
+    setSubmitSuccess(true);
+    setGuestMessage("");
+    setCopyToast("Gửi lời chúc thành công! Cảm ơn bạn.");
+    window.setTimeout(() => setCopyToast(null), 3000);
+  };
+
   const gift = weddingData.bank;
 
   return (
@@ -407,7 +630,14 @@ export default function WeddingInvitation() {
       <header className={`site-header${headerCompact ? " is-compact" : ""}${menuOpen ? " menu-open" : ""}`}>
         <a className={`monogram${logoImage ? " has-image" : ""}`} href="#home" aria-label="Duy và Lan · Về đầu trang">
           {logoImage ? (
-            <img className="monogram-logo-image" src={withBasePath(logoImage)} alt="Logo Duy và Lan" width="512" height="512" decoding="async" />
+            <img
+              className="monogram-logo-image"
+              src={withBasePath(theme === "dark" ? "/images/logo/logo-gold.webp" : logoImage)}
+              alt="Logo Duy và Lan"
+              width="512"
+              height="512"
+              decoding="async"
+            />
           ) : (
             <><span className="monogram-d">D</span><span className="rings-icon rings-monogram"><i /><i /></span><span className="monogram-l">L</span></>
           )}
@@ -491,7 +721,7 @@ export default function WeddingInvitation() {
           <a className="scroll-cue" href="#event"><span aria-hidden="true">↓</span>Cuộn để khám phá</a>
         </div>
         <div className="hero-photo">
-          <img src={withBasePath("/images/01-ROZ02396.JPG")} alt="Ảnh cưới của Duy và Lan" width="1200" height="1800" fetchPriority="high" decoding="async" />
+          <img src={withBasePath("/images/01-ROZ02396.webp")} alt="Ảnh cưới của Duy và Lan" width="1200" height="1800" fetchPriority="high" decoding="async" />
         </div>
       </section>
 
@@ -581,7 +811,9 @@ export default function WeddingInvitation() {
                       <div><dt>Địa chỉ</dt><dd>{event.address}</dd></div>
                     </dl>
                     <div className="event-actions">
-                      <button className="text-button" type="button" onClick={() => setFlippedEventId(null)}>Quay lại</button>
+                      <button className="text-button" type="button" onClick={() => setFlippedEventId(null)}>
+                        <span aria-hidden="true">←</span> Quay lại
+                      </button>
                       <a className="outline-button" href={event.mapUrl} target="_blank" rel="noreferrer">Chỉ đường</a>
                     </div>
                   </div>
@@ -603,7 +835,7 @@ export default function WeddingInvitation() {
         </div>
         <div className="story-layout">
           <div className="story-photo">
-            <img src={withBasePath("/images/02-ROZ01986.JPG")} alt="Ảnh kỷ niệm của Duy và Lan" width="1800" height="1200" loading="lazy" decoding="async" />
+            <img src={withBasePath("/images/02-ROZ01986.webp")} alt="Ảnh kỷ niệm của Duy và Lan" width="1800" height="1200" loading="lazy" decoding="async" />
           </div>
           <div className="story-list">
             {weddingData.story.map((item) => (
@@ -634,6 +866,19 @@ export default function WeddingInvitation() {
                 if (distance < -48) showNextPhoto();
               }}
               onPointerCancel={() => { sliderDragStartXRef.current = null; }}
+              onTouchStart={(e) => {
+                if (e.touches && e.touches[0]) {
+                  sliderDragStartXRef.current = e.touches[0].clientX;
+                }
+              }}
+              onTouchEnd={(e) => {
+                const startX = sliderDragStartXRef.current;
+                sliderDragStartXRef.current = null;
+                if (startX === null || !e.changedTouches || !e.changedTouches.length) return;
+                const distance = e.changedTouches[0].clientX - startX;
+                if (distance > 40) showPreviousPhoto();
+                if (distance < -40) showNextPhoto();
+              }}
             >
               <figure className="wedding-slide">
                 <img
@@ -642,9 +887,17 @@ export default function WeddingInvitation() {
                   draggable={false}
                   loading="lazy"
                   decoding="async"
+                  onClick={() => setLightboxPhotoIndex(activePhotoIndex)}
+                  title="Chạm để xem ảnh toàn màn hình"
                 />
                 <button className="slider-arrow slider-arrow-prev" type="button" aria-label="Xem ảnh trước" onClick={showPreviousPhoto}>←</button>
                 <button className="slider-arrow slider-arrow-next" type="button" aria-label="Xem ảnh tiếp theo" onClick={showNextPhoto}>→</button>
+                <div className="slider-swipe-hint" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  <span>Vuốt để chuyển ảnh</span>
+                </div>
                 <figcaption aria-live="polite">{String(activePhotoIndex + 1).padStart(2, "0")} <span>/</span> {String(weddingPhotos.length).padStart(2, "0")}</figcaption>
               </figure>
             </div>
@@ -727,13 +980,529 @@ export default function WeddingInvitation() {
       </section>
 
       <section id="wishes" className="gift-section section">
-        <div className="section-heading"><p className="section-kicker">With love</p><h2>Gửi lời chúc đến cô dâu và chú rể</h2><p>Tình cảm và sự hiện diện của bạn đã là món quà quý giá. Nếu muốn gửi thêm lời chúc, bạn có thể dùng thông tin bên dưới.</p></div>
-        <div className="gift-card">
-          <div className="gift-content"><div className="sample-qr" aria-label="Mã QR mừng cưới của Duy và Lan"><span><img src={withBasePath("/images/logo/logo.webp")} alt="Logo Duy và Lan" width="512" height="512" loading="lazy" decoding="async" /></span></div><div><p>{gift.label}</p><h3>{gift.bankName}</h3><strong>{gift.accountNumber}</strong><span>{gift.accountName}</span></div></div>
+        <div className="section-heading">
+          <p className="section-kicker">With love</p>
+          <h2>Gửi lời chúc đến tụi mình</h2>
+          <p>Tình cảm và sự hiện diện của bạn là niềm hạnh phúc lớn nhất của tụi mình. Bạn có thể để lại lời chúc hoặc gửi món quà mừng cưới bên dưới nhé.</p>
         </div>
-      </section>
 
-      <footer><img className="footer-logo" src={withBasePath("/images/logo/logo.webp")} alt="Logo Duy và Lan" width="512" height="512" loading="lazy" decoding="async" /><h2>Cảm ơn bạn đã trở thành một phần trong ngày vui của chúng mình.</h2><p>{weddingData.invitation.dateDisplay} · {weddingData.invitation.venue}</p><a href="#home">Trở về đầu trang ↑</a></footer>
+        {/* Wishes & Gift 2-Column Layout (Form on Left, QR on Right; Stacked on Mobile) */}
+        <div className="wishes-gift-layout">
+          {/* Bên trái: Sổ lưu bút & Xác nhận tham dự */}
+          <div className="wishes-form-card">
+            <div className="form-header">
+              <div className="form-seal-badge" aria-hidden="true">
+                <img
+                  src={withBasePath("/images/logo/logo-gold.webp")}
+                  alt="Logo Duy &amp; Lan"
+                  className="seal-monogram-img"
+                  width="64"
+                  height="64"
+                  decoding="async"
+                />
+              </div>
+              <p className="form-kicker">Gửi trao yêu thương</p>
+              <h3>Gửi lời chúc đến tụi mình</h3>
+              <p className="form-subtitle">Sự hiện diện và lời chúc phúc của bạn là niềm hạnh phúc trọn vẹn nhất đối với tụi mình</p>
+              <div className="form-divider" aria-hidden="true">
+                <span className="divider-line" />
+                <span className="divider-diamond">✦</span>
+                <span className="divider-line" />
+              </div>
+            </div>
+
+            {submitSuccess ? (
+              <div className="submit-success-banner" role="alert">
+                <span className="success-crest" aria-hidden="true">✦ ❀ ✦</span>
+                <h4>Cảm ơn bạn rất nhiều!</h4>
+                <button
+                  type="button"
+                  className="outline-button"
+                  onClick={() => setSubmitSuccess(false)}
+                >
+                  Gửi thêm lời chúc khác
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleWishSubmit} className="wishes-form">
+                <div className="form-grid-2">
+                  <div className="form-group">
+                    <label htmlFor="guest-name">
+                      Tên của bạn <span className="req">*</span>
+                    </label>
+                    <input
+                      id="guest-name"
+                      type="text"
+                      required
+                      placeholder="Ví dụ: Bạn Tuấn, Bé My..."
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="guest-relation">Bạn là...</label>
+                    <select
+                      id="guest-relation"
+                      value={guestRelation}
+                      onChange={(e) => setGuestRelation(e.target.value)}
+                    >
+                      <option value="Bạn chung">Bạn chung của cả hai</option>
+                      <option value="Bạn Chú rể">Bạn của Chú rể</option>
+                      <option value="Bạn Cô dâu">Bạn của Cô dâu</option>
+                      <option value="Người thân">Người thân / Gia đình</option>
+                      <option value="Đồng nghiệp">Đồng nghiệp</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="guest-message">
+                    Lời chúc gửi đến tụi mình <span className="req">*</span>
+                  </label>
+                  <textarea
+                    id="guest-message"
+                    required
+                    rows={4}
+                    placeholder="Gửi gắm vài dòng yêu thương đến tụi mình tại đây nhé..."
+                    value={guestMessage}
+                    onChange={(e) => setGuestMessage(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-submit-row">
+                  <button
+                    type="submit"
+                    className="wishes-submit-btn"
+                    disabled={isSubmittingWish}
+                  >
+                    {isSubmittingWish ? (
+                      <span>Đang gửi lời chúc...</span>
+                    ) : (
+                      <>
+                        <span>Gửi lời chúc yêu thương</span>
+                        <span className="btn-arrow" aria-hidden="true">→</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* Bên phải: Mã QR & Hộp mừng cưới */}
+          <div className="gift-card">
+            <div className="gift-card-inner">
+              <div className="form-header">
+                <div className="form-seal-badge" aria-hidden="true">
+                  <img
+                    src={withBasePath("/images/logo/logo-gold.webp")}
+                    alt="Logo Duy &amp; Lan"
+                    className="seal-monogram-img"
+                    width="64"
+                    height="64"
+                    decoding="async"
+                  />
+                </div>
+                <p className="form-kicker">Mừng cưới chúc phúc</p>
+                <h3>{gift.label || "Hộp mừng cưới"}</h3>
+                <p className="form-subtitle">Dù ở gần hay phương xa, mọi tình cảm và sự chúc phúc của bạn tụi mình đều vô cùng trân quý</p>
+                <div className="form-divider" aria-hidden="true">
+                  <span className="divider-line" />
+                  <span className="divider-diamond">✦</span>
+                  <span className="divider-line" />
+                </div>
+              </div>
+
+              <div className="gift-body">
+                <div
+                  className="qr-card-display is-clickable"
+                  aria-label="Mã QR mừng cưới (Chạm để phóng to)"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setQrModalOpen(true)}
+                  onKeyDown={(e) => e.key === "Enter" && setQrModalOpen(true)}
+                  title="Chạm để phóng to mã QR"
+                >
+                  {gift.qrImage ? (
+                    <div className="qr-image-wrapper">
+                      <img
+                        src={withBasePath(gift.qrImage)}
+                        alt="Mã QR mừng cưới"
+                        className="qr-main-img"
+                        width="300"
+                        height="300"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+                  ) : (
+                    <div className="sample-qr">
+                      <span>
+                        <img
+                          src={withBasePath("/images/logo/logo.webp")}
+                          alt="Logo Duy và Lan"
+                          width="512"
+                          height="512"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      </span>
+                    </div>
+                  )}
+                  <small className="qr-hint">Chạm để xem mã QR phóng to</small>
+                </div>
+
+                <div className="gift-details">
+                  <span className="gift-bank-badge">
+                    <img
+                      src={withBasePath("/images/logo/momo.svg")}
+                      alt="MoMo"
+                      className="momo-badge-icon"
+                      width={18}
+                      height={18}
+                    />
+                    <span>{gift.bankName}</span>
+                  </span>
+                  <div className="account-number-row">
+                    <strong>{gift.accountNumber}</strong>
+                    <button
+                      type="button"
+                      className="copy-btn"
+                      onClick={() => copyToClipboard(gift.accountNumber.replace(/\s+/g, ""), "số tài khoản")}
+                      aria-label="Sao chép số tài khoản"
+                    >
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                      </svg>
+                      <span>Sao chép STK</span>
+                    </button>
+                  </div>
+                  {gift.accountName && <span className="gift-account-name">{gift.accountName}</span>}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        {/* Wall of Wishes / Sổ lưu bút chúc phúc */}
+        <div className="wishes-wall" id="guestbook-wall">
+            <div className="wall-header">
+              <p className="section-kicker">Guestbook</p>
+              <h3>Sổ lưu bút chúc phúc</h3>
+              <div className="wall-subtitle-row">
+                <p className="wall-subtitle" suppressHydrationWarning>
+                  Những lời chúc yêu thương đã gửi đến tụi mình
+                </p>
+                {weddingData.googleSheetScriptUrl && (
+                  <button
+                    type="button"
+                    className="refresh-wishes-btn"
+                    onClick={fetchWishesFromSheet}
+                    disabled={isLoadingWishes}
+                    title="Cập nhật lời chúc mới nhất từ Google Sheets"
+                  >
+                    <span className={`sync-icon${isLoadingWishes ? " is-spinning" : ""}`} aria-hidden="true">↻</span>
+                    <span>{isLoadingWishes ? "Đang đồng bộ..." : "Làm mới"}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="wishes-grid" suppressHydrationWarning>
+              {paginatedWishes.map((wish, index) => {
+                return (
+                  <article className="wish-card" key={`${wish.name}-${index}-${wishesPage}`}>
+                    <div className="wish-card-header">
+                      <div className="wish-avatar" aria-hidden="true">
+                        {wish.name.trim().charAt(0).toUpperCase() || "♥"}
+                      </div>
+                      <div className="wish-meta">
+                        <strong>{wish.name}</strong>
+                        <div className="wish-tags">
+                          <span className="wish-relation">{wish.relation}</span>
+                        </div>
+                      </div>
+                      <time className="wish-date">{wish.date}</time>
+                    </div>
+                    <p className="wish-message">{wish.message}</p>
+                  </article>
+                );
+              })}
+            </div>
+
+            {totalWishesPages > 1 && (
+              <nav className="wishes-pagination" aria-label="Phân trang lời chúc">
+                <button
+                  type="button"
+                  className="page-btn page-nav-btn"
+                  onClick={() => {
+                    setWishesPage((p) => Math.max(1, p - 1));
+                    document.getElementById("guestbook-wall")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                  }}
+                  disabled={wishesPage <= 1}
+                  aria-label="Trang trước"
+                >
+                  ← Trước
+                </button>
+
+                <div className="page-numbers">
+                  {getPageNumbers(wishesPage, totalWishesPages).map((item, idx) =>
+                    typeof item === "number" ? (
+                      <button
+                        key={`page-${item}`}
+                        type="button"
+                        className={`page-btn page-num-btn${wishesPage === item ? " is-active" : ""}`}
+                        onClick={() => {
+                          setWishesPage(item);
+                          document.getElementById("guestbook-wall")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                        }}
+                        aria-current={wishesPage === item ? "page" : undefined}
+                      >
+                        {item}
+                      </button>
+                    ) : (
+                      <span key={`ellipsis-${idx}`} className="page-ellipsis" aria-hidden="true">
+                        …
+                      </span>
+                    )
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  className="page-btn page-nav-btn"
+                  onClick={() => {
+                    setWishesPage((p) => Math.min(totalWishesPages, p + 1));
+                    document.getElementById("guestbook-wall")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                  }}
+                  disabled={wishesPage >= totalWishesPages}
+                  aria-label="Trang sau"
+                >
+                  Sau →
+                </button>
+              </nav>
+            )}
+          </div>
+        </section>
+
+      {/* QR Zoom Modal */}
+      {qrModalOpen && (
+        <div
+          className="qr-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mã QR mừng cưới phóng to"
+          onClick={() => setQrModalOpen(false)}
+        >
+          <div className="qr-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="qr-modal-close"
+              aria-label="Đóng mã QR"
+              onClick={() => setQrModalOpen(false)}
+            >
+              ✕
+            </button>
+            <div className="qr-modal-brand">
+              <img
+                src={withBasePath("/images/logo/momo.svg")}
+                alt="MoMo"
+                className="qr-modal-momo-logo"
+                width={48}
+                height={48}
+              />
+              <span className="qr-modal-brand-label">MOMO</span>
+            </div>
+            <img
+              src={withBasePath(gift.qrImage || "/images/logo/logo.webp")}
+              alt="Mã QR mừng cưới phóng to"
+              className="qr-modal-qr-img"
+            />
+            <p><strong>{gift.accountNumber}</strong></p>
+            {gift.accountName && <p>{gift.accountName}</p>}
+            <button
+              type="button"
+              className="copy-btn"
+              style={{ marginTop: "16px" }}
+              onClick={() => copyToClipboard(gift.accountNumber.replace(/\s+/g, ""), "số tài khoản")}
+            >
+              Sao chép số tài khoản
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Album Fullscreen Lightbox Modal */}
+      {lightboxPhotoIndex !== null && (
+        <div
+          className="lightbox-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Xem ảnh cưới toàn màn hình"
+          onClick={() => {
+            if (!lightboxIsDraggingRef.current) {
+              setLightboxPhotoIndex(null);
+            }
+          }}
+          onWheel={(e) => {
+            e.stopPropagation();
+            if (Math.abs(e.deltaX) > 30) {
+              if (e.deltaX > 0) {
+                setLightboxPhotoIndex((cur) =>
+                  cur !== null ? (cur + 1) % weddingPhotos.length : null,
+                );
+              } else {
+                setLightboxPhotoIndex((cur) =>
+                  cur !== null ? (cur - 1 + weddingPhotos.length) % weddingPhotos.length : null,
+                );
+              }
+            }
+          }}
+          onPointerDown={(e) => {
+            lightboxDragStartXRef.current = e.clientX;
+            lightboxIsDraggingRef.current = false;
+          }}
+          onPointerMove={(e) => {
+            if (lightboxDragStartXRef.current !== null) {
+              if (Math.abs(e.clientX - lightboxDragStartXRef.current) > 8) {
+                lightboxIsDraggingRef.current = true;
+              }
+            }
+          }}
+          onPointerUp={(e) => {
+            const startX = lightboxDragStartXRef.current;
+            lightboxDragStartXRef.current = null;
+            if (startX === null) return;
+            const deltaX = e.clientX - startX;
+            if (Math.abs(deltaX) > 36) {
+              if (deltaX > 0) {
+                setLightboxPhotoIndex((cur) =>
+                  cur !== null ? (cur - 1 + weddingPhotos.length) % weddingPhotos.length : null,
+                );
+              } else {
+                setLightboxPhotoIndex((cur) =>
+                  cur !== null ? (cur + 1) % weddingPhotos.length : null,
+                );
+              }
+            }
+            window.setTimeout(() => {
+              lightboxIsDraggingRef.current = false;
+            }, 80);
+          }}
+          onPointerCancel={() => {
+            lightboxDragStartXRef.current = null;
+            lightboxIsDraggingRef.current = false;
+          }}
+          onTouchStart={(e) => {
+            if (e.touches && e.touches[0]) {
+              lightboxDragStartXRef.current = e.touches[0].clientX;
+              lightboxIsDraggingRef.current = false;
+            }
+          }}
+          onTouchMove={(e) => {
+            if (e.touches && e.touches[0] && lightboxDragStartXRef.current !== null) {
+              if (Math.abs(e.touches[0].clientX - lightboxDragStartXRef.current) > 8) {
+                lightboxIsDraggingRef.current = true;
+              }
+            }
+          }}
+          onTouchEnd={(e) => {
+            const startX = lightboxDragStartXRef.current;
+            lightboxDragStartXRef.current = null;
+            if (startX === null || !e.changedTouches || !e.changedTouches.length) return;
+            const deltaX = e.changedTouches[0].clientX - startX;
+            if (Math.abs(deltaX) > 36) {
+              if (deltaX > 0) {
+                setLightboxPhotoIndex((cur) =>
+                  cur !== null ? (cur - 1 + weddingPhotos.length) % weddingPhotos.length : null,
+                );
+              } else {
+                setLightboxPhotoIndex((cur) =>
+                  cur !== null ? (cur + 1) % weddingPhotos.length : null,
+                );
+              }
+            }
+            window.setTimeout(() => {
+              lightboxIsDraggingRef.current = false;
+            }, 80);
+          }}
+        >
+          <button
+            type="button"
+            className="lightbox-close-btn"
+            aria-label="Đóng chế độ toàn màn hình"
+            onClick={() => setLightboxPhotoIndex(null)}
+          >
+            ✕
+          </button>
+
+          <div className="lightbox-image-wrap" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={withBasePath(weddingPhotos[lightboxPhotoIndex].src)}
+              alt={weddingPhotos[lightboxPhotoIndex].alt || "Ảnh cưới Duy và Lan"}
+              draggable={false}
+            />
+            <div className="lightbox-caption">
+              {String(lightboxPhotoIndex + 1).padStart(2, "0")} / {String(weddingPhotos.length).padStart(2, "0")}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="lightbox-nav-btn lightbox-nav-prev"
+            aria-label="Ảnh trước"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxPhotoIndex(
+                (cur) => (cur! - 1 + weddingPhotos.length) % weddingPhotos.length,
+              );
+            }}
+          >
+            ←
+          </button>
+
+          <button
+            type="button"
+            className="lightbox-nav-btn lightbox-nav-next"
+            aria-label="Ảnh sau"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxPhotoIndex(
+                (cur) => (cur! + 1) % weddingPhotos.length,
+              );
+            }}
+          >
+            →
+          </button>
+        </div>
+      )}
+
+      {/* Toast Feedback */}
+      {copyToast && (
+        <div className="copy-toast" role="status">
+          <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16" aria-hidden="true">
+            <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+          </svg>
+          <span>{copyToast}</span>
+        </div>
+      )}
+
+      <footer>
+        <img
+          className="footer-logo"
+          src={withBasePath(theme === "dark" ? "/images/logo/logo-gold.webp" : "/images/logo/logo.webp")}
+          alt="Logo Duy và Lan"
+          width="512"
+          height="512"
+          loading="lazy"
+          decoding="async"
+        />
+        <h2>Cảm ơn bạn đã trở thành một phần trong ngày vui của chúng mình.</h2>
+        <p>{weddingData.invitation.dateDisplay} · {weddingData.invitation.venue}</p>
+        <a href="#home">Trở về đầu trang ↑</a>
+      </footer>
     </main>
   );
 }

@@ -21,7 +21,7 @@ export const weddingData = {
     dateDisplay: "28 · 10 · 2026",
     dateTime: "2026-10-28T18:00:00+07:00",
     venue: "Diamond Place",
-    shortAddress: "15A Hồ Văn Huê, Phường Đức Nhuận, TP. HCM",
+    shortAddress: "15A Hồ Văn Huê, Phường 9, Quận Phú Nhuận, TP. HCM",
   },
   events: [
     {
@@ -32,6 +32,8 @@ export const weddingData = {
       monthYear: "Tháng 10 · 2026",
       date: "Chủ Nhật, ngày 25 tháng 10 năm 2026",
       time: "Được tổ chức vào 11H00",
+      startIso: "2026-10-25T11:00:00+07:00",
+      endIso: "2026-10-25T14:00:00+07:00",
       venue: "Tư gia nhà gái",
       address: "Thôn 1, xã Ea Păl, tỉnh Đăk Lăk",
       mapUrl: "https://maps.app.goo.gl/Y9rjNaRzCw3MFfEv5",
@@ -45,9 +47,11 @@ export const weddingData = {
       monthYear: "Tháng 10 · 2026",
       date: "Thứ Tư, ngày 28 tháng 10 năm 2026",
       time: "Đón khách: 18H00 · Khai tiệc: 19H00",
+      startIso: "2026-10-28T18:00:00+07:00",
+      endIso: "2026-10-28T21:30:00+07:00",
       venue: "Diamond Place",
       venueDetail: "Sảnh Sapphire · Trung tâm Hội nghị Tiệc cưới Diamond Place",
-      address: "15A Hồ Văn Huê, Phường Đức Nhuận, TP. HCM",
+      address: "15A Hồ Văn Huê, Phường 9, Quận Phú Nhuận, TP. HCM",
       mapUrl:
         "https://maps.app.goo.gl/ALYoMxENDoEKyiai6",
       mapEmbedUrl:
@@ -61,6 +65,8 @@ export const weddingData = {
       monthYear: "Tháng 12 · 2026",
       date: "Chủ Nhật, ngày 06 tháng 12 năm 2026",
       time: "Được tổ chức vào 10H00",
+      startIso: "2026-12-06T10:00:00+07:00",
+      endIso: "2026-12-06T13:00:00+07:00",
       venue: "Tín Nhiệm Big Restaurant",
       venueDetail: "Nhà hàng Tín Nhiệm Big Restaurant",
       address: "Phan Đình Phùng, Thái Nguyên",
@@ -83,9 +89,33 @@ export const weddingData = {
     },
   ],
   bank: {
-    label: "Duy & Lan",
+    label: "Hộp mừng cưới",
     bankName: "MOMO",
-    accountName: "",
-    accountNumber: "0123 456 789",
+    accountName: "NGUYỄN TRƯỜNG KHƯƠNG DUY",
+    accountNumber: "PSG2627114900000027",
+    qrImage: "/images/qr/qr-code.jpg",
   },
+  // Cấu hình Google Sheets để lưu trữ lời chúc và xác nhận tham dự (RSVP)
+  // Bạn chỉ cần tạo Google Sheet và dán URL Web App của Google Apps Script vào đây:
+  googleSheetScriptUrl: "https://script.google.com/macros/s/AKfycbwbccHmMBzwgenERzVZ-D1dqRsKhoabyARJC3ZLqsKUpn6TyeGp6dWhKuqkNvdI2UsR7A/exec",
+  defaultWishes: [
+    {
+      name: "Hội bạn thân",
+      relation: "Bạn chung",
+      message: "Sau bao năm chứng kiến đôi trẻ phát 'cẩu lương' thì ngày này cũng đến! Chúc Duy và Lan trăm năm gắn kết, luôn đồng hành, thấu hiểu và cùng nhau tạo nên thật nhiều kỷ niệm đẹp nhé! Mãi hạnh phúc nha!",
+      date: "28/09/2026",
+    },
+    {
+      name: "Hội bạn cô dâu",
+      relation: "Bạn Cô dâu",
+      message: "Hôm nay công chúa của tụi mình rạng rỡ và xinh đẹp nhất luôn! Chúc Lan bước vào hành trình mới luôn được cưng chiều, hạnh phúc ngập tràn. Chú rể Duy nhớ chăm sóc và nhường nhịn cô dâu thật tốt đấy nhé!",
+      date: "28/09/2026",
+    },
+    {
+      name: "Hội bạn chú rể",
+      relation: "Bạn Chú rể",
+      message: "Chúc mừng chiến hữu Duy đã chính thức 'rước nàng về dinh' và gia nhập hội đàn ông có gia đình! Chúc hai vợ chồng thuận buồm xuôi gió, trăm năm hạnh phúc và sớm có thêm thành viên mới nha! Hết mình hôm nay nhé!",
+      date: "28/09/2026",
+    },
+  ],
 };

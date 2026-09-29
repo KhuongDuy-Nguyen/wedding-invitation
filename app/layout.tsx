@@ -4,9 +4,10 @@ import { withBasePath } from "./asset-path";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://khuongduy-nguyen.github.io/wedding-invitation/"),
   title: "Duy & Lan | Thiệp cưới",
   description:
-    "Trân trọng mời bạn đến chung vui trong ngày thành hôn của Duy và Lan.",
+    "Trân trọng mời bạn đến chung vui trong ngày thành hôn của Duy và Lan - 28.10.2026 tại Diamond Place.",
   applicationName: "Thiệp cưới Duy & Lan",
   authors: [{ name: "Duy & Lan" }],
   formatDetection: { email: false, address: false, telephone: false },
@@ -15,6 +16,29 @@ export const metadata: Metadata = {
     icon: [{ url: withBasePath("/favicon.png?v=5"), type: "image/png", sizes: "192x192" }],
     shortcut: withBasePath("/favicon.png?v=5"),
     apple: withBasePath("/images/logo/apple-touch-icon.png?v=3"),
+  },
+  openGraph: {
+    title: "Duy & Lan | Thiệp cưới · 28.10.2026",
+    description:
+      "Trân trọng kính mời bạn đến chung vui trong ngày thành hôn của Duy và Lan tại Diamond Place, TP. HCM.",
+    siteName: "Thiệp cưới Duy & Lan",
+    locale: "vi_VN",
+    type: "website",
+    images: [
+      {
+        url: withBasePath("/images/01-ROZ02396.webp"),
+        width: 1200,
+        height: 1800,
+        alt: "Ảnh cưới Duy & Lan",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Duy & Lan | Thiệp cưới · 28.10.2026",
+    description:
+      "Trân trọng kính mời bạn đến chung vui trong ngày thành hôn của Duy và Lan tại Diamond Place, TP. HCM.",
+    images: [withBasePath("/images/01-ROZ02396.webp")],
   },
 };
 
@@ -39,8 +63,8 @@ const themeInitializer = `
 
 const rootAssetStyles = {
   "--botanical-frame-image": `url("${withBasePath("/images/decor/botanical-frame.webp")}")`,
-  "--gallery-portrait-image": `url("${withBasePath("/images/01-ROZ02396.JPG")}")`,
-  "--gallery-landscape-image": `url("${withBasePath("/images/02-ROZ01986.JPG")}")`,
+  "--gallery-portrait-image": `url("${withBasePath("/images/01-ROZ02396.webp")}")`,
+  "--gallery-landscape-image": `url("${withBasePath("/images/02-ROZ01986.webp")}")`,
 } as CSSProperties;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
