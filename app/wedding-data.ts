@@ -90,10 +90,28 @@ export const weddingData = {
   ],
   bank: {
     label: "Hộp mừng cưới",
-    bankName: "MOMO",
-    accountName: "NGUYỄN TRƯỜNG KHƯƠNG DUY",
-    accountNumber: "PSG2627114900000027",
-    qrImage: "/images/qr/qr-code.jpg",
+  },
+  banks: {
+    groom: {
+      recipient: "Chú rể",
+      name: "Khương Duy",
+      fullName: "Nguyễn Trường Khương Duy",
+      bankName: "BIDV",
+      branch: "PGD Lộc Châu",
+      accountName: "NGUYEN TRUONG KHUONG DUY",
+      accountNumber: "6420599543",
+      qrImage: "/images/qr/qr-groom.jpg",
+    },
+    bride: {
+      recipient: "Cô dâu",
+      name: "Nguyễn Lan",
+      fullName: "Nguyễn Thị Lan",
+      bankName: "Agribank",
+      branch: "Chi nhánh An Phú",
+      accountName: "NGUYEN THI LAN",
+      accountNumber: "1606206270068",
+      qrImage: "/images/qr/qr-bride.jpg",
+    },
   },
   // Cấu hình Google Sheets để lưu trữ lời chúc và xác nhận tham dự (RSVP)
   // Bạn chỉ cần tạo Google Sheet và dán URL Web App của Google Apps Script vào đây:

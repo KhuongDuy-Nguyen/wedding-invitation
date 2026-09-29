@@ -4385,23 +4385,25 @@ footer a {
 .qr-modal {
   position: fixed;
   inset: 0;
-  background: rgba(19, 23, 16, 0.85);
-  backdrop-filter: blur(8px);
-  display: grid;
-  place-items: center;
+  background: rgba(19, 23, 16, 0.88);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   z-index: 1050;
-  padding: 20px;
+  padding: 16px;
+  overflow-y: auto;
 }
 
 .qr-modal-content {
   background: var(--paper);
   border: 1px solid var(--gold);
-  border-radius: 12px;
-  padding: clamp(24px, 4vw, 36px);
-  max-width: 360px;
+  border-radius: 20px;
+  padding: 28px 24px 24px;
+  max-width: min(480px, 92vw);
   width: 100%;
   text-align: center;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(183, 154, 99, 0.2);
   position: relative;
 }
 
@@ -4423,16 +4425,15 @@ footer a {
 
 .qr-modal-content .qr-modal-qr-img {
   width: 100%;
-  max-width: 280px;
+  max-width: 100%;
   height: auto;
-  max-height: 380px;
   object-fit: contain;
-  margin: 14px auto 16px;
+  margin: 16px auto 20px;
   display: block;
-  border-radius: 8px;
-  border: 8px solid #fff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  background: #fff;
+  border-radius: 14px;
+  border: none;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  background: transparent;
 }
 
 .qr-modal-brand {
@@ -4455,14 +4456,15 @@ footer a {
 
 .qr-modal-brand-label {
   font-family: var(--serif);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  color: #a50064;
-  letter-spacing: 0.05em;
+  color: var(--gold);
+  letter-spacing: 0.06em;
+  font-style: italic;
 }
 
 :root[data-theme="dark"] .qr-modal-brand-label {
-  color: #ff6eb4;
+  color: var(--gold);
 }
 
 .qr-modal-content h4 {
@@ -5588,6 +5590,339 @@ footer a {
 
 :root[data-theme="dark"] .page-ellipsis {
   color: rgba(244, 236, 220, 0.4);
+}
+
+/* ==========================================================================
+   LUXURY GIFT / WEDDING ENVELOPE & QR SECTION REDESIGN
+   ========================================================================== */
+
+.gift-tabs-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.gift-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(79, 93, 54, 0.07);
+  padding: 5px;
+  border-radius: 999px;
+  border: 1px solid rgba(183, 154, 99, 0.35);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.gift-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--soft-ink-68);
+  cursor: pointer;
+  transition: all 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  user-select: none;
+}
+
+.gift-tab-btn .tab-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
+}
+
+.gift-tab-btn .tab-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  line-height: 1.25;
+}
+
+.gift-tab-btn .tab-label small {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.gift-tab-btn .tab-label strong {
+  font-size: 0.92rem;
+  color: var(--ink);
+  font-family: var(--serif);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.gift-tab-btn:hover:not(.is-active) {
+  background: rgba(183, 154, 99, 0.12);
+  color: var(--ink);
+}
+
+.gift-tab-btn.is-active {
+  background: var(--paper, #fff);
+  border-color: rgba(183, 154, 99, 0.55);
+  box-shadow: 0 4px 14px rgba(47, 57, 34, 0.1), 0 1px 3px rgba(183, 154, 99, 0.2);
+}
+
+.gift-tab-btn.is-active .tab-label strong {
+  color: var(--gold);
+}
+
+/* Luxury Gift Envelope Card */
+.gift-card-envelope {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto 32px;
+  padding: 22px 20px 28px;
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.96) 0%, rgba(250, 247, 240, 0.92) 100%);
+  border: 1px solid rgba(183, 154, 99, 0.42);
+  border-radius: 20px;
+  box-shadow:
+    0 16px 40px rgba(47, 57, 34, 0.07),
+    0 2px 8px rgba(183, 154, 99, 0.08);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.gift-card-envelope::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed rgba(183, 154, 99, 0.28);
+  border-radius: 15px;
+  pointer-events: none;
+}
+
+.gift-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(183, 154, 99, 0.18);
+}
+
+.gift-bank-badge-gold {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, rgba(183, 154, 99, 0.18), rgba(183, 154, 99, 0.08));
+  border: 1px solid rgba(183, 154, 99, 0.45);
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(183, 154, 99, 0.1);
+}
+
+.gift-bank-badge-gold .bank-name-tag {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  text-transform: uppercase;
+}
+
+.gift-recipient-status {
+  font-size: 0.8rem;
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--soft-ink-68);
+  letter-spacing: 0.03em;
+}
+
+/* QR Code Display in Card */
+.gift-card-envelope .qr-card-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 auto 16px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.gift-card-envelope .qr-image-wrapper {
+  position: relative;
+  width: 100% !important;
+  max-width: 300px !important;
+  height: auto !important;
+  background: #ffffff;
+  border-radius: 16px !important;
+  border: 2px solid rgba(183, 154, 99, 0.35) !important;
+  box-shadow:
+    0 8px 24px rgba(37, 48, 33, 0.08),
+    0 2px 6px rgba(183, 154, 99, 0.1) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
+}
+
+.gift-card-envelope .qr-card-display:hover .qr-image-wrapper {
+  transform: translateY(-3px) scale(1.015);
+  box-shadow:
+    0 12px 32px rgba(37, 48, 33, 0.14),
+    0 0 0 1.5px var(--gold) !important;
+}
+
+.gift-card-envelope .qr-main-img {
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  display: block;
+  border-radius: 14px;
+}
+
+.qr-zoom-pill {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  background: rgba(37, 48, 33, 0.78);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(4px);
+  opacity: 0.88;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.gift-card-envelope .qr-card-display:hover .qr-zoom-pill {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+.gift-card-envelope .qr-hint {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--soft-ink-58);
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+/* Card Bottom Actions */
+.gift-card-actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.gift-full-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 300px;
+  padding: 10px 16px !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.03em !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--olive) !important;
+  background: var(--paper) !important;
+  color: var(--olive) !important;
+  cursor: pointer;
+  transition: all 0.22s ease !important;
+  box-shadow: 0 2px 8px rgba(79, 93, 54, 0.1);
+  white-space: nowrap;
+  font-family: var(--body);
+}
+
+.gift-full-copy-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  stroke: currentColor !important;
+  fill: none !important;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.gift-full-copy-btn strong {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+
+.gift-full-copy-btn:hover {
+  background: var(--olive) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(79, 93, 54, 0.25) !important;
+}
+
+.gift-full-copy-btn:hover strong {
+  color: #fff !important;
+}
+
+.copy-icon {
+  font-size: 0.88rem;
+  line-height: 1;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Dark theme styling for luxury gift card */
+:root[data-theme="dark"] .gift-tabs {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(200, 168, 106, 0.25);
+}
+
+:root[data-theme="dark"] .gift-tab-btn {
+  color: rgba(244, 236, 220, 0.7);
+}
+
+:root[data-theme="dark"] .gift-tab-btn.is-active {
+  background: #252c1e;
+  border-color: rgba(200, 168, 106, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="dark"] .gift-tab-btn.is-active .tab-label strong {
+  color: var(--gold);
+}
+
+:root[data-theme="dark"] .gift-card-envelope {
+  background: linear-gradient(155deg, #1d2319 0%, #171b13 100%);
+  border-color: rgba(200, 168, 106, 0.28);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="dark"] .gift-card-envelope::before {
+  border-color: rgba(200, 168, 106, 0.16);
+}
+
+:root[data-theme="dark"] .gift-stk-container {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(200, 168, 106, 0.2);
+}
+
+:root[data-theme="dark"] .gift-copy-btn {
+  border-color: var(--gold) !important;
+  color: var(--gold) !important;
+  background: transparent !important;
+}
+
+:root[data-theme="dark"] .gift-copy-btn:hover {
+  background: var(--gold) !important;
+  color: #161b13 !important;
+}
+
+:root[data-theme="dark"] .gift-holder-row .holder-name {
+  color: var(--gold);
 }
 
 .fireworks-canvas {

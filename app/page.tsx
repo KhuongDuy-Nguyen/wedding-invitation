@@ -90,6 +90,7 @@ export default function WeddingInvitation() {
   const [theme, setTheme] = useState<Theme>("light");
   const [copyToast, setCopyToast] = useState<string | null>(null);
   const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [activeBankTab, setActiveBankTab] = useState<"groom" | "bride">("groom");
   const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState<number | null>(null);
   const [guestName, setGuestName] = useState("");
   const [guestRelation, setGuestRelation] = useState("Bạn chung");
@@ -696,6 +697,7 @@ export default function WeddingInvitation() {
     }, 280);
   };
 
+  const currentBank = weddingData.banks ? weddingData.banks[activeBankTab] : weddingData.bank;
   const gift = weddingData.bank;
 
   return (
@@ -1328,71 +1330,84 @@ export default function WeddingInvitation() {
               </div>
 
               <div className="gift-body">
-                <div
-                  className="qr-card-display is-clickable"
-                  aria-label="Mã QR mừng cưới (Chạm để phóng to)"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setQrModalOpen(true)}
-                  onKeyDown={(e) => e.key === "Enter" && setQrModalOpen(true)}
-                  title="Chạm để phóng to mã QR"
-                >
-                  {gift.qrImage ? (
+                {/* 2 Tabs chuyển đổi Chú rể / Cô dâu */}
+                <div className="gift-tabs-wrap">
+                  <div className="gift-tabs" role="tablist" aria-label="Chọn người nhận mừng cưới">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeBankTab === "groom"}
+                      className={`gift-tab-btn${activeBankTab === "groom" ? " is-active" : ""}`}
+                      onClick={() => setActiveBankTab("groom")}
+                    >
+                      <span className="tab-label">
+                        <small>Mừng Chú rể</small>
+                        <strong>Khương Duy</strong>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeBankTab === "bride"}
+                      className={`gift-tab-btn${activeBankTab === "bride" ? " is-active" : ""}`}
+                      onClick={() => setActiveBankTab("bride")}
+                    >
+                      <span className="tab-label">
+                        <small>Mừng Cô dâu</small>
+                        <strong>Nguyễn Lan</strong>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Khung thiệp mừng cưới / Thẻ chuyển khoản sang trọng */}
+                <div className="gift-card-envelope">
+                  <div className="gift-card-header">
+                    <span className="gift-bank-badge-gold">
+                      <span className="bank-name-tag">{currentBank.bankName}</span>
+                    </span>
+                    <span className="gift-recipient-status">
+                      Mừng {currentBank.recipient} · {currentBank.name}
+                    </span>
+                  </div>
+
+                  <div
+                    className="qr-card-display is-clickable"
+                    aria-label={`Mã QR mừng cưới ${currentBank.recipient} (Chạm để phóng to)`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setQrModalOpen(true)}
+                    onKeyDown={(e) => e.key === "Enter" && setQrModalOpen(true)}
+                    title="Chạm để phóng to mã QR"
+                  >
                     <div className="qr-image-wrapper">
                       <img
-                        src={withBasePath(gift.qrImage)}
-                        alt="Mã QR mừng cưới"
+                        src={withBasePath(currentBank.qrImage)}
+                        alt={`Mã QR mừng cưới ${currentBank.recipient}`}
                         className="qr-main-img"
-                        width="300"
-                        height="300"
+                        width="240"
+                        height="240"
                         loading="lazy"
                         decoding="async"
                       />
                     </div>
-                  ) : (
-                    <div className="sample-qr">
-                      <span>
-                        <img
-                          src={withBasePath("/images/logo/logo.webp")}
-                          alt="Logo Duy và Lan"
-                          width="512"
-                          height="512"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      </span>
-                    </div>
-                  )}
-                  <small className="qr-hint">Chạm để xem mã QR phóng to</small>
-                </div>
+                    <small className="qr-hint">Chạm để xem mã QR phóng to</small>
+                  </div>
 
-                <div className="gift-details">
-                  <span className="gift-bank-badge">
-                    <img
-                      src={withBasePath("/images/logo/momo.svg")}
-                      alt="MoMo"
-                      className="momo-badge-icon"
-                      width={18}
-                      height={18}
-                    />
-                    <span>{gift.bankName}</span>
-                  </span>
-                  <div className="account-number-row">
-                    <strong>{gift.accountNumber}</strong>
+                  <div className="gift-card-actions">
                     <button
                       type="button"
-                      className="copy-btn"
-                      onClick={() => copyToClipboard(gift.accountNumber.replace(/\s+/g, ""), "số tài khoản")}
+                      className="copy-btn gift-full-copy-btn"
+                      onClick={() => copyToClipboard(currentBank.accountNumber.replace(/\s+/g, ""), "số tài khoản")}
                       aria-label="Sao chép số tài khoản"
                     >
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{flexShrink: 0}}>
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                       </svg>
-                      <span>Sao chép STK</span>
+                      <span>Sao chép STK: <strong>{currentBank.accountNumber}</strong></span>
                     </button>
                   </div>
-                  {gift.accountName && <span className="gift-account-name">{gift.accountName}</span>}
                 </div>
               </div>
 
@@ -1507,7 +1522,7 @@ export default function WeddingInvitation() {
           className="qr-modal"
           role="dialog"
           aria-modal="true"
-          aria-label="Mã QR mừng cưới phóng to"
+          aria-label={`Mã QR mừng cưới ${currentBank.recipient} phóng to`}
           onClick={() => setQrModalOpen(false)}
         >
           <div className="qr-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -1520,29 +1535,26 @@ export default function WeddingInvitation() {
               ✕
             </button>
             <div className="qr-modal-brand">
-              <img
-                src={withBasePath("/images/logo/momo.svg")}
-                alt="MoMo"
-                className="qr-modal-momo-logo"
-                width={48}
-                height={48}
-              />
-              <span className="qr-modal-brand-label">MOMO</span>
+              <span className="qr-modal-brand-label">
+                Mừng {currentBank.recipient} · {currentBank.bankName}
+              </span>
             </div>
             <img
-              src={withBasePath(gift.qrImage || "/images/logo/logo.webp")}
-              alt="Mã QR mừng cưới phóng to"
+              src={withBasePath(currentBank.qrImage)}
+              alt={`Mã QR mừng cưới ${currentBank.recipient} phóng to`}
               className="qr-modal-qr-img"
             />
-            <p><strong>{gift.accountNumber}</strong></p>
-            {gift.accountName && <p>{gift.accountName}</p>}
             <button
               type="button"
-              className="copy-btn"
-              style={{ marginTop: "16px" }}
-              onClick={() => copyToClipboard(gift.accountNumber.replace(/\s+/g, ""), "số tài khoản")}
+              className="copy-btn gift-full-copy-btn"
+              style={{ marginTop: "14px", width: "100%" }}
+              onClick={() => copyToClipboard(currentBank.accountNumber.replace(/\s+/g, ""), "số tài khoản")}
             >
-              Sao chép số tài khoản
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{flexShrink: 0}}>
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              <span>Sao chép STK: <strong>{currentBank.accountNumber}</strong></span>
             </button>
           </div>
         </div>
