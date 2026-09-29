@@ -212,6 +212,15 @@ button {
   border: 0;
 }
 
+html.invitation-locked,
+body.invitation-locked {
+  overflow: hidden !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  touch-action: none !important;
+  overscroll-behavior: none !important;
+}
+
 .invitation-gate {
   position: fixed;
   inset: 0;
@@ -225,6 +234,8 @@ button {
   perspective: 1800px;
   overflow: hidden;
   user-select: none;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 .invitation-gate::after {
@@ -5577,6 +5588,15 @@ footer a {
 
 :root[data-theme="dark"] .page-ellipsis {
   color: rgba(244, 236, 220, 0.4);
+}
+
+.fireworks-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 999999;
 }
 
 @media (prefers-reduced-motion: reduce) {

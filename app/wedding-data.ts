@@ -97,7 +97,7 @@ export const weddingData = {
   },
   // Cấu hình Google Sheets để lưu trữ lời chúc và xác nhận tham dự (RSVP)
   // Bạn chỉ cần tạo Google Sheet và dán URL Web App của Google Apps Script vào đây:
-  googleSheetScriptUrl: "https://script.google.com/macros/s/AKfycbwbccHmMBzwgenERzVZ-D1dqRsKhoabyARJC3ZLqsKUpn6TyeGp6dWhKuqkNvdI2UsR7A/exec",
+  googleSheetScriptUrl: "https://script.google.com/macros/s/AKfycbwCOvcDM20mAWLTaeqlA38M59BOlANvTMGgTB8ZQaeJWpTJ9ZN0EcqRpLSnCPcSGRu4Fw/exec",
   defaultWishes: [
     {
       name: "Hội bạn thân",

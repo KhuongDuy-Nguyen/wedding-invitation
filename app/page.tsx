@@ -17,6 +17,23 @@ type WishItem = {
   date: string;
 };
 
+type Particle = {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: string;
+  size: number;
+  alpha: number;
+  decay: number;
+  gravity: number;
+  type: "spark" | "confetti" | "heart";
+  rotation?: number;
+  rotationSpeed?: number;
+  tilt?: number;
+  tiltSpeed?: number;
+};
+
 const HO_CHI_MINH_TIME_ZONE = "Asia/Ho_Chi_Minh";
 const HO_CHI_MINH_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
 const WEDDING_TIMESTAMP = new Date(weddingData.invitation.dateTime).getTime();
@@ -105,6 +122,157 @@ export default function WeddingInvitation() {
   const thumbnailWheelReadyRef = useRef(true);
   const lightboxDragStartXRef = useRef<number | null>(null);
   const lightboxIsDraggingRef = useRef(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particlesRef = useRef<Particle[]>([]);
+  const animationFrameIdRef = useRef<number | null>(null);
+
+  const triggerFireworks = useCallback((originX?: number, originY?: number, count = 75) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    const colors = [
+      "#d4af37", // Gold
+      "#f9e79f", // Light Gold
+      "#ffd700", // Yellow Gold
+      "#ff6b81", // Rose Pink
+      "#ff8e9e", // Light Pink
+      "#ffffff", // Sparkle White
+      "#f39c12", // Amber
+      "#fadbd8", // Champagne Pink
+      "#e5c07b", // Warm Sand
+    ];
+
+    const newParticles: Particle[] = [];
+    const cx = originX ?? width / 2;
+    const cy = originY ?? height * 0.45;
+
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.random() * 8 + 3;
+      const typeRand = Math.random();
+      const type: "spark" | "confetti" | "heart" =
+        typeRand < 0.4 ? "confetti" : typeRand < 0.75 ? "spark" : "heart";
+
+      newParticles.push({
+        x: cx + (Math.random() - 0.5) * 40,
+        y: cy + (Math.random() - 0.5) * 40,
+        vx: Math.cos(angle) * speed * (Math.random() * 1.2 + 0.6),
+        vy: Math.sin(angle) * speed * (Math.random() * 1.2 + 0.6) - (Math.random() * 3 + 2),
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: type === "spark" ? Math.random() * 3 + 2 : Math.random() * 6 + 6,
+        alpha: 1,
+        decay: Math.random() * 0.012 + 0.008,
+        gravity: type === "spark" ? 0.15 : 0.09,
+        type,
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 8,
+        tilt: Math.random() * 10,
+        tiltSpeed: Math.random() * 0.1 + 0.05,
+      });
+    }
+
+    particlesRef.current.push(...newParticles);
+
+    if (!animationFrameIdRef.current) {
+      const render = () => {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const particles = particlesRef.current;
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += p.gravity;
+          p.vx *= 0.98;
+          p.alpha -= p.decay;
+
+          if (p.rotation !== undefined && p.rotationSpeed !== undefined) {
+            p.rotation += p.rotationSpeed;
+          }
+          if (p.tilt !== undefined && p.tiltSpeed !== undefined) {
+            p.tilt += p.tiltSpeed;
+          }
+
+          if (p.alpha <= 0 || p.y > canvas.height + 30) {
+            particles.splice(i, 1);
+            continue;
+          }
+
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, p.alpha);
+          ctx.fillStyle = p.color;
+
+          if (p.type === "spark") {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = "#ffffff";
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (p.type === "confetti") {
+            ctx.translate(p.x, p.y);
+            ctx.rotate((p.rotation || 0) * (Math.PI / 180));
+            const xFactor = Math.cos(p.tilt || 0);
+            ctx.scale(xFactor, 1);
+            ctx.fillRect(-p.size / 2, -p.size / 3, p.size, p.size * 0.6);
+          } else if (p.type === "heart") {
+            ctx.translate(p.x, p.y);
+            ctx.rotate((p.rotation || 0) * (Math.PI / 180));
+            const s = p.size * 0.6;
+            ctx.beginPath();
+            ctx.moveTo(0, s / 4);
+            ctx.quadraticCurveTo(0, 0, s / 2, 0);
+            ctx.quadraticCurveTo(s, 0, s, s / 2);
+            ctx.quadraticCurveTo(s, (s * 3) / 4, s / 2, s);
+            ctx.lineTo(0, s * 1.3);
+            ctx.lineTo(-s / 2, s);
+            ctx.quadraticCurveTo(-s, (s * 3) / 4, -s, s / 2);
+            ctx.quadraticCurveTo(-s, 0, -s / 2, 0);
+            ctx.quadraticCurveTo(0, 0, 0, s / 4);
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+
+        if (particles.length > 0) {
+          animationFrameIdRef.current = requestAnimationFrame(render);
+        } else {
+          animationFrameIdRef.current = null;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      };
+
+      animationFrameIdRef.current = requestAnimationFrame(render);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -160,20 +328,48 @@ export default function WeddingInvitation() {
   }, [menuOpen]);
 
   useEffect(() => {
-    document.body.classList.toggle("invitation-locked", !invitationOpen);
+    const isLocked = !invitationOpen;
+    document.documentElement.classList.toggle("invitation-locked", isLocked);
+    document.body.classList.toggle("invitation-locked", isLocked);
     document.body.classList.toggle("invitation-ready", invitationOpen);
+
     const resetScroll = () => window.scrollTo({ top: 0, behavior: "auto" });
+    resetScroll();
+
+    if (isLocked) {
+      const preventScroll = (e: Event) => {
+        e.preventDefault();
+      };
+      const preventKeyScroll = (e: KeyboardEvent) => {
+        if (
+          ["Space", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(e.code) ||
+          [" ", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(e.key)
+        ) {
+          e.preventDefault();
+        }
+      };
+
+      window.addEventListener("wheel", preventScroll, { passive: false });
+      window.addEventListener("touchmove", preventScroll, { passive: false });
+      window.addEventListener("keydown", preventKeyScroll, { passive: false });
+
+      return () => {
+        document.documentElement.classList.remove("invitation-locked");
+        document.body.classList.remove("invitation-locked");
+        window.removeEventListener("wheel", preventScroll);
+        window.removeEventListener("touchmove", preventScroll);
+        window.removeEventListener("keydown", preventKeyScroll);
+      };
+    }
+
     let secondFrame = 0;
-    const firstFrame = invitationOpen
-      ? window.requestAnimationFrame(() => {
-          resetScroll();
-          secondFrame = window.requestAnimationFrame(resetScroll);
-        })
-      : 0;
-    const scrollResetTimer = invitationOpen ? window.setTimeout(resetScroll, 240) : 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      resetScroll();
+      secondFrame = window.requestAnimationFrame(resetScroll);
+    });
+    const scrollResetTimer = window.setTimeout(resetScroll, 240);
 
     return () => {
-      document.body.classList.remove("invitation-locked");
       document.body.classList.remove("invitation-ready");
       if (firstFrame) window.cancelAnimationFrame(firstFrame);
       if (secondFrame) window.cancelAnimationFrame(secondFrame);
@@ -246,6 +442,14 @@ export default function WeddingInvitation() {
     if (backgroundMusic && audioRef.current) {
       void audioRef.current.play().then(() => setMusicPlaying(true)).catch(() => setMusicPlaying(false));
     }
+    // Launch celebratory wedding fireworks when envelope opens!
+    window.setTimeout(() => {
+      triggerFireworks(window.innerWidth / 2, window.innerHeight * 0.45, 90);
+    }, 450);
+    window.setTimeout(() => {
+      triggerFireworks(window.innerWidth * 0.28, window.innerHeight * 0.35, 65);
+      triggerFireworks(window.innerWidth * 0.72, window.innerHeight * 0.35, 65);
+    }, 950);
     const openingDuration = INVITATION_OPEN_ANIMATION_MS;
     window.setTimeout(() => {
       setInvitationOpen(true);
@@ -257,6 +461,7 @@ export default function WeddingInvitation() {
       void audioRef.current.play().then(() => setMusicPlaying(true)).catch(() => setMusicPlaying(false));
     }
     setInvitationOpen(true);
+    triggerFireworks(window.innerWidth / 2, window.innerHeight * 0.4, 85);
   };
 
   const toggleMusic = () => {
@@ -316,21 +521,26 @@ export default function WeddingInvitation() {
 
   const [isLoadingWishes, setIsLoadingWishes] = useState(false);
 
-  const fetchWishesFromSheet = useCallback(async () => {
+  const fetchWishesFromSheet = useCallback(async (isManualRefresh = false) => {
     if (!weddingData.googleSheetScriptUrl) return;
     setIsLoadingWishes(true);
     try {
       const url = `${weddingData.googleSheetScriptUrl}${weddingData.googleSheetScriptUrl.includes("?") ? "&" : "?"}_t=${Date.now()}`;
+      // Use clean GET without custom headers to avoid CORS preflight rejection on GitHub Pages / redirect
       const res = await fetch(url, {
         method: "GET",
-        headers: { Accept: "application/json" },
         cache: "no-store",
       });
       const text = await res.text();
       let data: Record<string, unknown> | null = null;
       try {
         data = JSON.parse(text);
-      } catch {
+      } catch (parseErr) {
+        console.warn("Could not parse JSON from Google Sheets:", parseErr, text.slice(0, 120));
+        if (isManualRefresh) {
+          setCopyToast("Chưa thể đồng bộ! Vui lòng kiểm tra quyền chia sẻ Google Apps Script.");
+          window.setTimeout(() => setCopyToast(null), 3500);
+        }
         return;
       }
       if (data && data.status === "success" && Array.isArray(data.wishes)) {
@@ -353,9 +563,22 @@ export default function WeddingInvitation() {
         } catch {
           // ignore
         }
+        if (isManualRefresh) {
+          setCopyToast("Đã làm mới danh sách");
+          window.setTimeout(() => setCopyToast(null), 3000);
+        }
+      } else {
+        if (isManualRefresh) {
+          setCopyToast("Data chưa trả về danh sách hợp lệ.");
+          window.setTimeout(() => setCopyToast(null), 3500);
+        }
       }
     } catch (err) {
       console.warn("Could not fetch wishes from Google Sheet:", err);
+      if (isManualRefresh) {
+        setCopyToast("Lỗi kết nối tới Google Sheets! Vui lòng kiểm tra lại quyền Web App.");
+        window.setTimeout(() => setCopyToast(null), 3500);
+      }
     } finally {
       setIsLoadingWishes(false);
     }
@@ -374,7 +597,7 @@ export default function WeddingInvitation() {
       } catch {
         // ignore
       }
-      void fetchWishesFromSheet();
+      void fetchWishesFromSheet(false);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [fetchWishesFromSheet]);
@@ -465,6 +688,12 @@ export default function WeddingInvitation() {
     setGuestMessage("");
     setCopyToast("Gửi lời chúc thành công! Cảm ơn bạn.");
     window.setTimeout(() => setCopyToast(null), 3000);
+    // Fire celebratory fireworks!
+    triggerFireworks(window.innerWidth / 2, window.innerHeight * 0.45, 85);
+    window.setTimeout(() => {
+      triggerFireworks(window.innerWidth * 0.25, window.innerHeight * 0.35, 60);
+      triggerFireworks(window.innerWidth * 0.75, window.innerHeight * 0.35, 60);
+    }, 280);
   };
 
   const gift = weddingData.bank;
@@ -1184,7 +1413,7 @@ export default function WeddingInvitation() {
                   <button
                     type="button"
                     className="refresh-wishes-btn"
-                    onClick={fetchWishesFromSheet}
+                    onClick={() => void fetchWishesFromSheet(true)}
                     disabled={isLoadingWishes}
                     title="Cập nhật lời chúc mới nhất từ Google Sheets"
                   >
@@ -1488,6 +1717,7 @@ export default function WeddingInvitation() {
         <p>{weddingData.invitation.dateDisplay} · {weddingData.invitation.venue}</p>
         <a href="#home">Trở về đầu trang ↑</a>
       </footer>
+      <canvas ref={canvasRef} className="fireworks-canvas" aria-hidden="true" />
     </main>
   );
 }
