@@ -34,27 +34,6 @@ const REVEAL_SELECTOR =
   ".countdown, .section-heading, .couple-profile, .event-card, .story-photo, .story-list article, .wedding-slider, .calendar-copy, .wedding-calendar, .gift-card, .wishes-form-card, .wishes-wall";
 const INVITATION_OPEN_ANIMATION_MS = 1850;
 
-function getAttendanceBadge(attendance?: string): { label: string; className: string } | null {
-  if (!attendance) return null;
-  const lower = attendance.toLowerCase();
-  if (
-    lower.includes("sẽ tham dự") ||
-    lower.includes("sẽ đến") ||
-    (lower.includes("tham dự") && !lower.includes("không"))
-  ) {
-    return { label: "Sẽ tham dự", className: "is-attending" };
-  }
-  if (lower.includes("không") || lower.includes("từ xa")) {
-    return {
-      label: attendance.includes("từ xa") ? "Gửi chúc từ xa" : "Không tham dự",
-      className: "is-absent",
-    };
-  }
-  if (lower.includes("chắc") || lower.includes("chưa")) {
-    return { label: "Chưa chắc chắn", className: "is-tentative" };
-  }
-  return { label: attendance, className: "is-tentative" };
-}
 
 function getHoChiMinhNow(): number {
   const parts = HO_CHI_MINH_DATE_TIME_FORMATTER.formatToParts(new Date());
@@ -347,7 +326,13 @@ export default function WeddingInvitation() {
         headers: { Accept: "application/json" },
         cache: "no-store",
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: Record<string, unknown> | null = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        return;
+      }
       if (data && data.status === "success" && Array.isArray(data.wishes)) {
         const sheetWishes: WishItem[] = data.wishes.map((item: Record<string, unknown>) => ({
           name: String(item.name || "Khách mời"),
