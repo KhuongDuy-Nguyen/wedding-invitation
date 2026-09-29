@@ -697,7 +697,7 @@ export default function WeddingInvitation() {
     }, 280);
   };
 
-  const currentBank = weddingData.banks ? weddingData.banks[activeBankTab] : weddingData.bank;
+  const currentBank = weddingData.banks[activeBankTab];
   const gift = weddingData.bank;
 
   return (
