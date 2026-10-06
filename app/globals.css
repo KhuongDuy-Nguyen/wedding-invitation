@@ -3092,7 +3092,7 @@ footer a {
   font-size: 15px;
 }
 
-/* Small heart under the thank-you line: fades in once, then beats a single time. */
+/* Small heart under the thank-you line: fades in once, then keeps a gentle heartbeat. */
 .footer-heart {
   display: inline-block;
   margin-top: 22px;
@@ -3106,14 +3106,15 @@ footer a {
 }
 
 .footer-heart.is-visible .footer-heart-glyph {
-  animation: footer-heart-beat 1100ms ease-in-out calc(var(--reveal-delay, 0ms) + 520ms) 1 both;
+  animation: footer-heart-beat 1400ms ease-in-out calc(var(--reveal-delay, 0ms) + 520ms) infinite both;
 }
 
+/* "Lub-dub" in the first half, then a rest, so the loop reads as a calm pulse. */
 @keyframes footer-heart-beat {
-  0%, 100% { transform: scale(1); }
-  22% { transform: scale(1.22); }
-  40% { transform: scale(0.96); }
-  58% { transform: scale(1.12); }
+  0%, 55%, 100% { transform: scale(1); }
+  14% { transform: scale(1.24); }
+  28% { transform: scale(0.97); }
+  40% { transform: scale(1.14); }
 }
 
 /* Dark mode keeps the olive-and-champagne identity while reducing glare. */
@@ -6819,7 +6820,8 @@ body::after {
 
   .film-page {
     position: sticky;
-    /* Negative for pages taller than the screen (set from JS) so their bottom is reachable. */
+    /* Pages taller than the screen pin with their bottom on the bottom edge so all content is
+       reachable; --page-top (≤ 0) comes from JS and stays stable while the address bar moves. */
     top: var(--page-top, 0px);
     display: flex;
     flex-direction: column;

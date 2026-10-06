@@ -467,14 +467,33 @@ export default function WeddingInvitation() {
             staggerBySection.set(section, step + 1);
             target.style.setProperty("--reveal-delay", `${Math.min(step, REVEAL_MAX_STAGGER_STEPS) * REVEAL_STAGGER_MS}ms`);
             target.classList.add("is-visible");
-            observer.unobserve(target);
           });
       },
       { threshold: 0.12, rootMargin: "0px 0px -7%" },
     );
 
-    revealTargets.forEach((target) => observer.observe(target));
-    return () => observer.disconnect();
+    // Replay on the way back down: once an element has fully left through the bottom edge (the
+    // visitor scrolled back up past it), reset it so it animates in again next time. Elements that
+    // leave through the top stay visible, so scrolling up never hides content in front of the reader.
+    const resetObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) return;
+          const viewportBottom = entry.rootBounds?.bottom ?? window.innerHeight;
+          if (entry.boundingClientRect.top >= viewportBottom) entry.target.classList.remove("is-visible");
+        });
+      },
+      { threshold: 0 },
+    );
+
+    revealTargets.forEach((target) => {
+      observer.observe(target);
+      resetObserver.observe(target);
+    });
+    return () => {
+      observer.disconnect();
+      resetObserver.disconnect();
+    };
   }, [invitationOpen]);
 
   // Scroll-driven scenes: page progress bar, hero arch → full-bleed expansion, horizontal story
@@ -498,6 +517,10 @@ export default function WeddingInvitation() {
     const pages = track ? Array.from(track.querySelectorAll<HTMLElement>(":scope > .film-page")) : [];
     const parallaxFrames = Array.from(document.querySelectorAll<HTMLElement>("[data-parallax]"));
     const nearbyFrames = new Set<HTMLElement>();
+    // Smallest visible height seen at the current width (address bar shown). Using the minimum keeps
+    // the pin offset stable while the bar hides/shows, and never places content under the toolbar.
+    let stableViewportWidth = 0;
+    let stableViewportHeight = 0;
     let frame = 0;
     let filmDistance = 0;
     let chapterStops: number[] = [];
@@ -505,10 +528,16 @@ export default function WeddingInvitation() {
 
     // Layout measurements that only change on resize, not on every scroll frame.
     const measure = () => {
-      // Phones: a page taller than the screen sticks once its bottom reaches the bottom edge, so all
-      // of its content is readable before the next page slides over it.
+      // Phones: pages taller than the screen pin once their bottom reaches the bottom edge, so every
+      // line and photo is shown before the next page slides over.
+      if (window.innerWidth !== stableViewportWidth || !stableViewportHeight) {
+        stableViewportWidth = window.innerWidth;
+        stableViewportHeight = window.innerHeight;
+      } else {
+        stableViewportHeight = Math.min(stableViewportHeight, window.innerHeight);
+      }
       pages.forEach((page) => {
-        const top = mobileCinematicQuery.matches ? `${Math.min(0, Math.round(window.innerHeight - page.offsetHeight))}px` : "";
+        const top = mobileCinematicQuery.matches ? `${Math.min(0, Math.round(stableViewportHeight - page.offsetHeight))}px` : "";
         if (page.style.getPropertyValue("--page-top") !== top) {
           if (top) page.style.setProperty("--page-top", top);
           else page.style.removeProperty("--page-top");
