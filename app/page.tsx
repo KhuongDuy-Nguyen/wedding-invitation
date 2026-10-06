@@ -1332,10 +1332,21 @@ export default function WeddingInvitation() {
               <div className="gift-body">
                 {/* 2 Tabs chuyển đổi Chú rể / Cô dâu */}
                 <div className="gift-tabs-wrap">
-                  <div className="gift-tabs" role="tablist" aria-label="Chọn người nhận mừng cưới">
+                  <div className="gift-tabs" role="tablist" aria-label="Chọn người nhận mừng cưới"
+                    onKeyDown={(event) => {
+                      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                      event.preventDefault();
+                      const nextTab = event.key === "Home" ? "groom" : event.key === "End" ? "bride" : activeBankTab === "groom" ? "bride" : "groom";
+                      setActiveBankTab(nextTab);
+                      document.getElementById(`gift-tab-${nextTab}`)?.focus();
+                    }}
+                  >
                     <button
                       type="button"
                       role="tab"
+                      id="gift-tab-groom"
+                      aria-controls="gift-bank-panel"
+                      tabIndex={activeBankTab === "groom" ? 0 : -1}
                       aria-selected={activeBankTab === "groom"}
                       className={`gift-tab-btn${activeBankTab === "groom" ? " is-active" : ""}`}
                       onClick={() => setActiveBankTab("groom")}
@@ -1348,6 +1359,9 @@ export default function WeddingInvitation() {
                     <button
                       type="button"
                       role="tab"
+                      id="gift-tab-bride"
+                      aria-controls="gift-bank-panel"
+                      tabIndex={activeBankTab === "bride" ? 0 : -1}
                       aria-selected={activeBankTab === "bride"}
                       className={`gift-tab-btn${activeBankTab === "bride" ? " is-active" : ""}`}
                       onClick={() => setActiveBankTab("bride")}
@@ -1361,26 +1375,25 @@ export default function WeddingInvitation() {
                 </div>
 
                 {/* Khung thiệp mừng cưới / Thẻ chuyển khoản sang trọng */}
-                <div className="gift-card-envelope">
+                <div className="gift-card-envelope" id="gift-bank-panel" role="tabpanel" aria-labelledby={`gift-tab-${activeBankTab}`}>
                   <div className="gift-card-header">
+                    <div className="gift-recipient-heading">
+                      <span className="gift-recipient-status">Mừng {currentBank.recipient.toLowerCase()}</span>
+                      <h4>{currentBank.name}</h4>
+                    </div>
                     <span className="gift-bank-badge-gold">
                       <span className="bank-name-tag">{currentBank.bankName}</span>
                     </span>
-                    <span className="gift-recipient-status">
-                      Mừng {currentBank.recipient} · {currentBank.name}
-                    </span>
                   </div>
 
-                  <div
+                  <button
+                    type="button"
                     className="qr-card-display is-clickable"
                     aria-label={`Mã QR mừng cưới ${currentBank.recipient} (Chạm để phóng to)`}
-                    role="button"
-                    tabIndex={0}
                     onClick={() => setQrModalOpen(true)}
-                    onKeyDown={(e) => e.key === "Enter" && setQrModalOpen(true)}
                     title="Chạm để phóng to mã QR"
                   >
-                    <div className="qr-image-wrapper">
+                    <span className="qr-image-wrapper">
                       <img
                         src={withBasePath(currentBank.qrImage)}
                         alt={`Mã QR mừng cưới ${currentBank.recipient}`}
@@ -1390,22 +1403,33 @@ export default function WeddingInvitation() {
                         loading="lazy"
                         decoding="async"
                       />
+                    </span>
+                    <span className="qr-hint">Phóng to mã QR ↗</span>
+                  </button>
+
+                  <dl className="gift-account-details">
+                    <div>
+                      <dt>Chủ tài khoản</dt>
+                      <dd>{currentBank.accountName}</dd>
                     </div>
-                    <small className="qr-hint">Chạm để xem mã QR phóng to</small>
-                  </div>
+                    <div>
+                      <dt>Số tài khoản</dt>
+                      <dd className="gift-account-number">{currentBank.accountNumber}</dd>
+                    </div>
+                  </dl>
 
                   <div className="gift-card-actions">
                     <button
                       type="button"
                       className="copy-btn gift-full-copy-btn"
                       onClick={() => copyToClipboard(currentBank.accountNumber.replace(/\s+/g, ""), "số tài khoản")}
-                      aria-label="Sao chép số tài khoản"
+                      aria-label={`Sao chép số tài khoản ${currentBank.recipient.toLowerCase()}`}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                       </svg>
-                      <span>Sao chép STK: <strong>{currentBank.accountNumber}</strong></span>
+                      <span>Sao chép số tài khoản</span>
                     </button>
                   </div>
                 </div>
