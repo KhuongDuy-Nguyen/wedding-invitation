@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- Static media is pre-optimized and served directly by Cloudflare. */
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { withBasePath } from "./asset-path";
 import { backgroundMusic, backgroundMusicTitle, couplePortraits, logoImage, weddingPhotos } from "./generated-wedding-gallery";
 import { weddingData } from "./wedding-data";
@@ -48,8 +48,60 @@ const HO_CHI_MINH_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-CA", {
   hourCycle: "h23",
 });
 const REVEAL_SELECTOR =
-  ".countdown, .section-heading, .couple-profile, .event-card, .story-photo, .story-list article, .wedding-slider, .calendar-copy, .wedding-calendar, .gift-card, .wishes-form-card, .wishes-wall";
+  ".countdown, .section-heading, .couple-profile, .event-card, .film-chapter, .film-frame, .film-finale-copy, .wedding-slider, .calendar-copy, .wedding-calendar, .gift-card, .wishes-form-card, .wishes-wall, .footer-logo, .footer-thanks, .footer-heart";
+const REVEAL_STAGGER_MS = 100;
+const REVEAL_MAX_STAGGER_STEPS = 4;
+// Pinned, scroll-driven scenes (hero expansion, horizontal story film) only run on wide screens
+// for visitors who have not asked for reduced motion. Keep in sync with the CSS media queries.
+const CINEMATIC_MEDIA_QUERY = "(min-width: 901px) and (prefers-reduced-motion: no-preference)";
+// Portrait/phone version of the scenes: short pinned hero + stacked "album pages" for the story.
+const MOBILE_CINEMATIC_MEDIA_QUERY = "(max-width: 900px) and (prefers-reduced-motion: no-preference)";
+const HERO_WIDE_PHOTO = "/images/wedding/ROZ02268.webp";
+const STORY_LEAD_PHOTO = "/images/wedding/ROZ01885.webp";
+const STORY_FINALE_PHOTO = "/images/wedding/ROZ02150.webp";
+const STORY_FILM_FRAMES = [
+  { main: "/images/wedding/ROZ01978.webp", detail: "/images/wedding/ROZ02037.webp" },
+  { main: "/images/wedding/ROZ02369.webp", detail: "/images/wedding/ROZ02245.webp" },
+];
 const INVITATION_OPEN_ANIMATION_MS = 1850;
+
+function clamp(value: number, min = 0, max = 1): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function smoothstep(edge0: number, edge1: number, value: number): number {
+  const t = clamp((value - edge0) / (edge1 - edge0));
+  return t * t * (3 - 2 * t);
+}
+
+/** Wraps each word so headings can rise word-by-word out of a soft mask when revealed. */
+function SplitWords({ text }: { text: string }) {
+  const words = text.split(" ");
+  return (
+    <>
+      {words.map((word, index) => (
+        <Fragment key={`${word}-${index}`}>
+          <span className="split-word" style={{ "--word-index": index } as CSSProperties}>
+            <span>{word}</span>
+          </span>
+          {index < words.length - 1 ? " " : null}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+function getRevealVariant(target: HTMLElement): string {
+  if (target.matches(".couple-profile")) {
+    const profiles = Array.from(target.parentElement?.querySelectorAll(":scope > .couple-profile") ?? []);
+    return profiles.indexOf(target) % 2 === 0 ? "from-left" : "from-right";
+  }
+  if (target.matches(".section-heading, .calendar-copy, .footer-thanks")) return "words";
+  if (target.matches(".film-frame, .wedding-slider, .wedding-calendar")) return "soft-zoom";
+  if (target.matches(".film-chapter, .film-finale-copy")) return "timeline";
+  if (target.matches(".footer-heart")) return "heart";
+  return "rise";
+}
 
 
 function getHoChiMinhNow(): number {
@@ -126,6 +178,12 @@ export default function WeddingInvitation() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const animationFrameIdRef = useRef<number | null>(null);
+  const scrollProgressRef = useRef<HTMLSpanElement>(null);
+  const heroSceneRef = useRef<HTMLElement>(null);
+  const storyFilmRef = useRef<HTMLDivElement>(null);
+  const storyTrackRef = useRef<HTMLDivElement>(null);
+  const filmProgressRef = useRef<HTMLSpanElement>(null);
+  const filmCounterRef = useRef<HTMLSpanElement>(null);
 
   const triggerFireworks = useCallback((originX?: number, originY?: number, count = 75) => {
     const canvas = canvasRef.current;
@@ -384,10 +442,9 @@ export default function WeddingInvitation() {
     const revealTargets = document.querySelectorAll<HTMLElement>(REVEAL_SELECTOR);
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    revealTargets.forEach((target, index) => {
+    revealTargets.forEach((target) => {
       target.classList.add("motion-reveal");
-      target.style.setProperty("--reveal-delay", `${(index % 3) * 80}ms`);
-      if (reduceMotion) target.classList.add("is-visible");
+      target.dataset.reveal = getRevealVariant(target);
     });
 
     if (reduceMotion || !("IntersectionObserver" in window)) {
@@ -397,17 +454,210 @@ export default function WeddingInvitation() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
-        });
+        // Stagger only the elements that enter together, per section, in document order,
+        // so headings lead and the content inside the same section follows.
+        const staggerBySection = new Map<Element, number>();
+        entries
+          .filter((entry) => entry.isIntersecting)
+          .map((entry) => entry.target as HTMLElement)
+          .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+          .forEach((target) => {
+            const section = target.closest("section, footer") ?? document.body;
+            const step = staggerBySection.get(section) ?? 0;
+            staggerBySection.set(section, step + 1);
+            target.style.setProperty("--reveal-delay", `${Math.min(step, REVEAL_MAX_STAGGER_STEPS) * REVEAL_STAGGER_MS}ms`);
+            target.classList.add("is-visible");
+            observer.unobserve(target);
+          });
       },
       { threshold: 0.12, rootMargin: "0px 0px -7%" },
     );
 
     revealTargets.forEach((target) => observer.observe(target));
     return () => observer.disconnect();
+  }, [invitationOpen]);
+
+  // Scroll-driven scenes: page progress bar, hero arch → full-bleed expansion, horizontal story
+  // film and photo parallax. Everything is written straight to the DOM inside one rAF per scroll
+  // burst (no React state per frame).
+  useEffect(() => {
+    if (!invitationOpen) return;
+
+    const root = document.documentElement;
+    const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const cinematicQuery = window.matchMedia(CINEMATIC_MEDIA_QUERY);
+    const mobileCinematicQuery = window.matchMedia(MOBILE_CINEMATIC_MEDIA_QUERY);
+    const progressBar = scrollProgressRef.current;
+    const heroScene = heroSceneRef.current;
+    const heroPhoto = heroScene?.querySelector<HTMLElement>(".hero-photo") ?? null;
+    const film = storyFilmRef.current;
+    const track = storyTrackRef.current;
+    const filmProgressBar = filmProgressRef.current;
+    const filmCounter = filmCounterRef.current;
+    const chapters = track ? Array.from(track.querySelectorAll<HTMLElement>(".film-chapter")) : [];
+    const pages = track ? Array.from(track.querySelectorAll<HTMLElement>(":scope > .film-page")) : [];
+    const parallaxFrames = Array.from(document.querySelectorAll<HTMLElement>("[data-parallax]"));
+    const nearbyFrames = new Set<HTMLElement>();
+    let frame = 0;
+    let filmDistance = 0;
+    let chapterStops: number[] = [];
+    let activeChapter = -1;
+
+    // Layout measurements that only change on resize, not on every scroll frame.
+    const measure = () => {
+      // Phones: a page taller than the screen sticks once its bottom reaches the bottom edge, so all
+      // of its content is readable before the next page slides over it.
+      pages.forEach((page) => {
+        const top = mobileCinematicQuery.matches ? `${Math.min(0, Math.round(window.innerHeight - page.offsetHeight))}px` : "";
+        if (page.style.getPropertyValue("--page-top") !== top) {
+          if (top) page.style.setProperty("--page-top", top);
+          else page.style.removeProperty("--page-top");
+        }
+        if (!mobileCinematicQuery.matches) page.style.removeProperty("--page-cover");
+      });
+      if (!film || !track) return;
+      if (cinematicQuery.matches) {
+        filmDistance = Math.max(0, track.scrollWidth - window.innerWidth);
+        const height = `${Math.round(filmDistance + window.innerHeight)}px`;
+        if (film.style.height !== height) film.style.height = height;
+        chapterStops = chapters.map((chapter) => chapter.offsetLeft - window.innerWidth * 0.55);
+      } else {
+        filmDistance = 0;
+        chapterStops = [];
+        if (film.style.height) film.style.height = "";
+        if (track.style.transform) track.style.transform = "";
+      }
+    };
+
+    const update = () => {
+      frame = 0;
+      // While the mobile menu is open the body is position:fixed and scrollY reads 0; keep the last state.
+      if (root.classList.contains("menu-open")) return;
+
+      const reduceMotion = reduceMotionQuery.matches;
+      const cinematic = cinematicQuery.matches;
+      const mobileCinematic = mobileCinematicQuery.matches;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Reads first…
+      const scrollable = root.scrollHeight - viewportHeight;
+      const pageProgress = scrollable > 0 ? clamp(window.scrollY / scrollable) : 0;
+
+      let heroProgress = 0;
+      if (heroScene && !reduceMotion) {
+        if (cinematic) {
+          const rect = heroScene.getBoundingClientRect();
+          heroProgress = clamp(-rect.top / Math.max(1, rect.height - viewportHeight));
+        } else if (mobileCinematic && heroPhoto) {
+          // Phones: the photo frame pins at the top while its (taller) wrapper scrolls past.
+          const rect = heroPhoto.getBoundingClientRect();
+          heroProgress = clamp(-rect.top / Math.max(1, rect.height - viewportHeight));
+        } else if (heroPhoto) {
+          const rect = heroPhoto.getBoundingClientRect();
+          heroProgress = clamp((viewportHeight - rect.top) / (viewportHeight * 0.75));
+        }
+      }
+
+      let filmProgress = 0;
+      if (film && cinematic && filmDistance > 0) {
+        const rect = film.getBoundingClientRect();
+        filmProgress = clamp(-rect.top / Math.max(1, rect.height - viewportHeight));
+      }
+      const filmOffset = filmProgress * filmDistance;
+      let chapterIndex = 0;
+      chapterStops.forEach((stop, index) => {
+        if (filmOffset >= stop) chapterIndex = index;
+      });
+
+      // How far the following page has slid over each pinned page (0…1).
+      const pageTops = mobileCinematic ? pages.map((page) => page.getBoundingClientRect().top) : [];
+      const pageCovers = pageTops.map((_, index) =>
+        index + 1 < pageTops.length ? clamp((viewportHeight - pageTops[index + 1]) / viewportHeight) : 0,
+      );
+
+      const parallaxShifts = reduceMotion
+        ? []
+        : Array.from(nearbyFrames, (element) => {
+            const rect = element.getBoundingClientRect();
+            const y = clamp((rect.top + rect.height / 2 - viewportHeight / 2) / (viewportHeight / 2 + rect.height / 2), -1, 1);
+            const x = clamp((rect.left + rect.width / 2 - viewportWidth / 2) / (viewportWidth / 2 + rect.width / 2), -1, 1);
+            return [element, x, y] as const;
+          });
+
+      // …then writes, to avoid layout thrashing.
+      if (progressBar) progressBar.style.transform = `scaleX(${pageProgress.toFixed(4)})`;
+      if (heroScene) {
+        heroScene.style.setProperty("--hero-p", heroProgress.toFixed(4));
+        heroScene.style.setProperty("--hero-wide", smoothstep(0.28, 0.78, heroProgress).toFixed(4));
+        heroScene.style.setProperty("--hero-caption", smoothstep(0.62, 0.94, heroProgress).toFixed(4));
+      }
+      if (track && cinematic) track.style.transform = `translate3d(${(-filmOffset).toFixed(1)}px, 0, 0)`;
+      pageCovers.forEach((cover, index) => pages[index].style.setProperty("--page-cover", cover.toFixed(4)));
+      if (filmProgressBar) filmProgressBar.style.transform = `scaleX(${filmProgress.toFixed(4)})`;
+      if (filmCounter && chapters.length && chapterIndex !== activeChapter) {
+        activeChapter = chapterIndex;
+        filmCounter.textContent = `${String(chapterIndex + 1).padStart(2, "0")} / ${String(chapters.length).padStart(2, "0")}`;
+      }
+      parallaxShifts.forEach(([element, x, y]) => {
+        element.style.setProperty("--parallax-x", x.toFixed(4));
+        element.style.setProperty("--parallax-shift", y.toFixed(4));
+      });
+    };
+
+    const scheduleUpdate = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+
+    const remeasure = () => {
+      measure();
+      scheduleUpdate();
+    };
+
+    const parallaxObserver =
+      "IntersectionObserver" in window
+        ? new IntersectionObserver(
+            (entries) => {
+              entries.forEach((entry) => {
+                const element = entry.target as HTMLElement;
+                if (entry.isIntersecting) nearbyFrames.add(element);
+                else nearbyFrames.delete(element);
+              });
+              scheduleUpdate();
+            },
+            { rootMargin: "25% 25%" },
+          )
+        : null;
+    if (parallaxObserver) parallaxFrames.forEach((element) => parallaxObserver.observe(element));
+    else parallaxFrames.forEach((element) => nearbyFrames.add(element));
+
+    // Page height changes (images, wishes loading, flipping cards) without a window resize.
+    const resizeObserver = "ResizeObserver" in window ? new ResizeObserver(remeasure) : null;
+    resizeObserver?.observe(document.body);
+
+    remeasure();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", remeasure, { passive: true });
+    reduceMotionQuery.addEventListener("change", remeasure);
+    cinematicQuery.addEventListener("change", remeasure);
+    mobileCinematicQuery.addEventListener("change", remeasure);
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", remeasure);
+      reduceMotionQuery.removeEventListener("change", remeasure);
+      cinematicQuery.removeEventListener("change", remeasure);
+      mobileCinematicQuery.removeEventListener("change", remeasure);
+      parallaxObserver?.disconnect();
+      resizeObserver?.disconnect();
+      if (film) film.style.height = "";
+      if (track) track.style.transform = "";
+      pages.forEach((page) => {
+        page.style.removeProperty("--page-top");
+        page.style.removeProperty("--page-cover");
+      });
+    };
   }, [invitationOpen]);
 
   useEffect(() => {
@@ -882,6 +1132,12 @@ export default function WeddingInvitation() {
         </div>
       </header>
 
+      {invitationOpen && (
+        <div className="scroll-progress" aria-hidden="true">
+          <span ref={scrollProgressRef} />
+        </div>
+      )}
+
       {backgroundMusic && (
         <>
           <audio ref={audioRef} src={withBasePath(backgroundMusic)} loop preload="none" onPause={() => setMusicPlaying(false)} onPlay={() => setMusicPlaying(true)} />
@@ -920,7 +1176,8 @@ export default function WeddingInvitation() {
         </>
       )}
 
-      <section id="home" className="hero">
+      <section id="home" className="hero-scene" ref={heroSceneRef}>
+      <div className="hero">
         <div className="hero-copy">
           <p className="eyebrow">{weddingData.invitation.eyebrow}</p>
           <span className="leaf-divider" aria-hidden="true">✦</span>
@@ -937,8 +1194,18 @@ export default function WeddingInvitation() {
           <a className="scroll-cue" href="#event"><span aria-hidden="true">↓</span>Cuộn để khám phá</a>
         </div>
         <div className="hero-photo">
-          <img src={withBasePath("/images/01-ROZ02396.webp")} alt="Ảnh cưới của Duy và Lan" width="1200" height="1800" fetchPriority="high" decoding="async" />
+          {/* The frame is what pins (phones) / expands (desktop) during the hero scroll scene. */}
+          <div className="hero-photo-frame">
+            <img className="hero-photo-portrait" src={withBasePath("/images/01-ROZ02396.webp")} alt="Ảnh cưới của Duy và Lan" width="1200" height="1800" fetchPriority="high" decoding="async" />
+            <img className="hero-photo-wide" src={withBasePath(HERO_WIDE_PHOTO)} alt="" aria-hidden="true" width="1800" height="1180" loading="lazy" decoding="async" />
+            <div className="hero-scene-caption" aria-hidden="true">
+              <p>Save the date</p>
+              <strong>{weddingData.invitation.dateDisplay}</strong>
+              <span>{weddingData.couple.groom} &amp; {weddingData.couple.bride}</span>
+            </div>
+          </div>
         </div>
+      </div>
       </section>
 
       <section className="countdown-section" aria-label="Đếm ngược đến ngày thành hôn">
@@ -956,7 +1223,7 @@ export default function WeddingInvitation() {
       <section className="couple-section section" aria-labelledby="couple-heading">
         <div className="section-heading">
           <p className="section-kicker">The bride and groom</p>
-          <h2 id="couple-heading">Cô dâu và Chú rể</h2>
+          <h2 id="couple-heading"><SplitWords text="Cô dâu và Chú rể" /></h2>
           <p>Hai trái tim, một lời hẹn và một hành trình mới mang tên gia đình.</p>
         </div>
         <div className="couple-portraits">
@@ -991,7 +1258,7 @@ export default function WeddingInvitation() {
       <section id="event" className="event-section section">
         <div className="section-heading">
           <p className="section-kicker">Lịch hỷ sự</p>
-          <h2>Ba dấu mốc · Một hành trình</h2>
+          <h2><SplitWords text="Ba dấu mốc · Một hành trình" /></h2>
           <p>Gia đình hai bên trân trọng kính mời quý khách cùng hiện diện trong hành trình hỷ sự của Duy và Lan. Mỗi buổi lễ là một dấu mốc thân tình, được tổ chức tại ba địa điểm khác nhau.</p>
         </div>
         <div className="events-list">
@@ -1043,27 +1310,70 @@ export default function WeddingInvitation() {
         </div>
       </section>
 
-      <section id="story" className="story-section section">
-        <div className="section-heading">
-          <p className="section-kicker">Our story</p>
-          <h2>Từ ngày gặp nhau</h2>
-          <p>Đây là một vài dấu mốc trong hành trình chúng mình gặp gỡ, đồng hành và quyết định cùng nhau xây dựng gia đình.</p>
-        </div>
-        <div className="story-layout">
-          <div className="story-photo">
-            <img src={withBasePath("/images/02-ROZ01986.webp")} alt="Ảnh kỷ niệm của Duy và Lan" width="1800" height="1200" loading="lazy" decoding="async" />
-          </div>
-          <div className="story-list">
-            {weddingData.story.map((item) => (
-              <article key={item.year}><span>{item.year}</span><div><h3>{item.title}</h3><p>{item.text}</p></div></article>
-            ))}
+      <section id="story" className="story-section section" aria-labelledby="story-heading">
+        {/* On wide screens this becomes a pinned, horizontally scrolling film strip; elsewhere it stacks. */}
+        <div className="story-film" ref={storyFilmRef}>
+          <div className="story-film-viewport">
+            <div className="story-film-track" ref={storyTrackRef}>
+              {/* `.film-page` wrappers are `display: contents` on desktop (flat film strip) and become
+                  stacked, pinned "album pages" on phones. */}
+              <div className="film-page">
+              <div className="section-heading film-intro">
+                <p className="section-kicker">Our story</p>
+                <h2 id="story-heading"><SplitWords text="Từ ngày gặp nhau" /></h2>
+                <p>Đây là một vài dấu mốc trong hành trình chúng mình gặp gỡ, đồng hành và quyết định cùng nhau xây dựng gia đình.</p>
+                <span className="film-hint" aria-hidden="true">Cuộn để lật từng trang <i>→</i></span>
+              </div>
+              <figure className="film-frame film-frame-arch" data-parallax>
+                <img src={withBasePath(STORY_LEAD_PHOTO)} alt="Duy và Lan tựa vào nhau" width="1800" height="2700" loading="lazy" decoding="async" />
+              </figure>
+              </div>
+              {weddingData.story.map((item, index) => {
+                const frames = STORY_FILM_FRAMES[index % STORY_FILM_FRAMES.length];
+                return (
+                  <div className="film-page" key={item.year}>
+                    <article className="film-chapter">
+                      <p className="film-chapter-label">Chương {String(index + 1).padStart(2, "0")}</p>
+                      <p className="film-year">{item.year}</p>
+                      <h3>{item.title}</h3>
+                      <p className="film-text">{item.text}</p>
+                    </article>
+                    <div className="film-collage">
+                      <figure className="film-frame film-frame-main" data-parallax>
+                        <img src={withBasePath(frames.main)} alt={`Kỷ niệm của Duy và Lan · ${item.title}`} width="1800" height="1200" loading="lazy" decoding="async" />
+                      </figure>
+                      <figure className="film-frame film-frame-detail" data-parallax>
+                        <img src={withBasePath(frames.detail)} alt="" width="1800" height="1200" loading="lazy" decoding="async" />
+                      </figure>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="film-page">
+              <div className="film-finale">
+                <figure className="film-frame film-frame-arch film-frame-finale" data-parallax>
+                  <img src={withBasePath(STORY_FINALE_PHOTO)} alt="Duy nắm tay Lan" width="1800" height="2700" loading="lazy" decoding="async" />
+                </figure>
+                <div className="film-finale-copy">
+                  <p className="section-kicker">Chương tiếp theo</p>
+                  <p className="film-finale-title">Và từ đây, mình là một nhà.</p>
+                  <p className="film-finale-date">{weddingData.invitation.dateDisplay}</p>
+                </div>
+              </div>
+              </div>
+            </div>
+            <div className="film-progress" aria-hidden="true">
+              <span className="film-progress-label">Chuyện chúng mình</span>
+              <span className="film-progress-track"><span ref={filmProgressRef} /></span>
+              <span className="film-progress-count" ref={filmCounterRef}>01 / {String(weddingData.story.length).padStart(2, "0")}</span>
+            </div>
           </div>
         </div>
       </section>
 
       <section id="gallery" className="gallery-section section">
         <div className="section-heading">
-          <p className="section-kicker">Little moments</p><h2>Khoảnh khắc của chúng mình</h2>
+          <p className="section-kicker">Little moments</p><h2><SplitWords text="Khoảnh khắc của chúng mình" /></h2>
           <p>Những kỷ niệm nhỏ trên hành trình của chúng mình.</p>
         </div>
         {weddingPhotos.length > 0 ? (
@@ -1165,7 +1475,7 @@ export default function WeddingInvitation() {
       <section id="saigon-date" className="calendar-section section" aria-labelledby="saigon-date-heading">
         <div className="calendar-copy">
           <p className="section-kicker">Lịch hẹn Sài Gòn</p>
-          <h2 id="saigon-date-heading">Tháng Mười,<br />ngày mình chung vui</h2>
+          <h2 id="saigon-date-heading"><SplitWords text="Tháng Mười," /><br /><SplitWords text="ngày mình chung vui" /></h2>
           <p>
             Hẹn gặp bạn vào <strong>Thứ Tư, 28 tháng 10 năm 2026</strong> tại Diamond Place,
             Thành phố Hồ Chí Minh.
@@ -1186,6 +1496,7 @@ export default function WeddingInvitation() {
               const day = index + 1;
               return day === 28 ? (
                 <strong className="wedding-day" key={day} aria-label="Ngày 28, ngày tổ chức tại Sài Gòn">
+                  <svg className="wedding-day-ring" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" pathLength="1" /></svg>
                   <span>28</span><i aria-hidden="true">♥</i>
                 </strong>
               ) : <span key={day}>{day}</span>;
@@ -1198,7 +1509,7 @@ export default function WeddingInvitation() {
       <section id="wishes" className="gift-section section">
         <div className="section-heading">
           <p className="section-kicker">With love</p>
-          <h2>Gửi lời chúc đến tụi mình</h2>
+          <h2><SplitWords text="Gửi lời chúc đến tụi mình" /></h2>
           <p>Tình cảm và sự hiện diện của bạn là niềm hạnh phúc lớn nhất của tụi mình. Bạn có thể để lại lời chúc hoặc gửi món quà mừng cưới bên dưới nhé.</p>
         </div>
 
@@ -1749,7 +2060,8 @@ export default function WeddingInvitation() {
           loading="lazy"
           decoding="async"
         />
-        <h2>Cảm ơn bạn đã trở thành một phần trong ngày vui của chúng mình.</h2>
+        <h2 className="footer-thanks"><SplitWords text="Cảm ơn bạn đã trở thành một phần trong ngày vui của chúng mình." /></h2>
+        <span className="footer-heart" aria-hidden="true"><span className="footer-heart-glyph">♥</span></span>
         <p>{weddingData.invitation.dateDisplay} · {weddingData.invitation.venue}</p>
         <a href="#home">Trở về đầu trang ↑</a>
       </footer>

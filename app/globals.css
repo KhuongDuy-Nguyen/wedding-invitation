@@ -128,19 +128,99 @@ body.menu-open {
   }
 }
 
-/* Gentle motion language: editorial reveals, a slow photographic drift, and soft highlights. */
+/* Gentle motion language: editorial reveals, scroll-linked photo depth, and soft highlights. */
 .motion-reveal {
+  --reveal-x: 0px;
+  --reveal-y: 24px;
+  --reveal-scale: 1;
+  --reveal-duration: 720ms;
   opacity: 0;
-  transform: translateY(28px);
+  transform: translate3d(var(--reveal-x), var(--reveal-y), 0) scale(var(--reveal-scale));
   transition:
-    opacity 850ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms),
-    transform 850ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+    opacity var(--reveal-duration) cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms),
+    transform var(--reveal-duration) cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+}
+
+.motion-reveal:not(.is-visible) {
   will-change: opacity, transform;
 }
 
 .motion-reveal.is-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
+}
+
+.motion-reveal[data-reveal="soft-zoom"] {
+  --reveal-y: 16px;
+  --reveal-scale: 0.975;
+  --reveal-duration: 800ms;
+}
+
+.motion-reveal[data-reveal="timeline"] {
+  --reveal-y: 18px;
+  --reveal-duration: 640ms;
+}
+
+.motion-reveal[data-reveal="heart"] {
+  --reveal-y: 6px;
+  --reveal-scale: 0.6;
+  --reveal-duration: 640ms;
+}
+
+/* Bride and groom slide in from opposite sides on desktop; phones keep the default rise. */
+@media (min-width: 901px) {
+  .motion-reveal[data-reveal="from-left"] {
+    --reveal-x: -32px;
+    --reveal-y: 0px;
+  }
+
+  .motion-reveal[data-reveal="from-right"] {
+    --reveal-x: 32px;
+    --reveal-y: 0px;
+  }
+}
+
+/* Scroll-linked parallax. JS writes --parallax-shift (-1…1); the scale always exceeds twice the
+   travel so the photo keeps covering its frame. */
+[data-parallax] {
+  --parallax-range: 3.5%;
+  --parallax-scale: 1.08;
+}
+
+[data-parallax] > img {
+  transform: translate3d(0, calc(var(--parallax-shift, 0) * var(--parallax-range)), 0) scale(var(--parallax-scale));
+  will-change: transform;
+}
+
+@media (max-width: 900px) {
+  [data-parallax] {
+    --parallax-range: 1.6%;
+    --parallax-scale: 1.045;
+  }
+}
+
+/* Thin gold reading-progress bar, shown once the invitation is open. */
+.scroll-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 30;
+  height: 3px;
+  pointer-events: none;
+  transition: opacity 240ms ease;
+}
+
+.scroll-progress > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #a8864a, var(--gold) 55%, #e4cc94);
+  box-shadow: 0 0 8px rgba(183, 154, 99, 0.45);
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+html.menu-open .scroll-progress {
+  opacity: 0;
 }
 
 body.invitation-ready .hero-copy > * {
@@ -153,10 +233,6 @@ body.invitation-ready .hero-copy > *:nth-child(4) { animation-delay: 240ms; }
 body.invitation-ready .hero-copy > *:nth-child(5) { animation-delay: 320ms; }
 body.invitation-ready .hero-copy > *:nth-child(6) { animation-delay: 400ms; }
 body.invitation-ready .hero-copy > *:nth-child(7) { animation-delay: 480ms; }
-
-body.invitation-ready .hero-photo img {
-  animation: hero-photo-drift 16s ease-in-out infinite alternate;
-}
 
 .primary-button,
 .secondary-button {
@@ -3016,6 +3092,30 @@ footer a {
   font-size: 15px;
 }
 
+/* Small heart under the thank-you line: fades in once, then beats a single time. */
+.footer-heart {
+  display: inline-block;
+  margin-top: 22px;
+  color: #d5b97e;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.footer-heart-glyph {
+  display: inline-block;
+}
+
+.footer-heart.is-visible .footer-heart-glyph {
+  animation: footer-heart-beat 1100ms ease-in-out calc(var(--reveal-delay, 0ms) + 520ms) 1 both;
+}
+
+@keyframes footer-heart-beat {
+  0%, 100% { transform: scale(1); }
+  22% { transform: scale(1.22); }
+  40% { transform: scale(0.96); }
+  58% { transform: scale(1.12); }
+}
+
 /* Dark mode keeps the olive-and-champagne identity while reducing glare. */
 :root[data-theme="dark"] .invitation-gate {
   background:
@@ -3099,6 +3199,7 @@ footer a {
 :root[data-theme="dark"] .hero-photo img,
 :root[data-theme="dark"] .story-photo img,
 :root[data-theme="dark"] .couple-portrait-frame img,
+:root[data-theme="dark"] .film-frame img,
 :root[data-theme="dark"] .wedding-slide > img {
   filter: brightness(0.78) saturate(0.86) sepia(0.06);
 }
@@ -3379,11 +3480,6 @@ footer a {
 @keyframes hero-copy-rise {
   from { opacity: 0; transform: translateY(22px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes hero-photo-drift {
-  from { transform: scale(1.015); }
-  to { transform: scale(1.065); }
 }
 
 @keyframes seal-breathe {
@@ -6058,4 +6154,709 @@ footer a {
     transform: none;
   }
 
+  [data-parallax] > img {
+    transform: none;
+    will-change: auto;
+  }
+
+  .footer-heart .footer-heart-glyph,
+  .footer-heart.is-visible .footer-heart-glyph {
+    animation: none;
+  }
+}
+
+
+/* ==========================================================================
+   Editorial & cinematic layer
+   Scroll-driven values come from page.tsx as CSS custom properties:
+   --hero-p / --hero-wide / --hero-caption (0…1), --parallax-x / --parallax-shift (-1…1).
+   ========================================================================== */
+
+/* Fine paper grain over the page, for a printed-invitation feel. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+:root[data-theme="dark"] body::after {
+  opacity: 0.07;
+}
+
+/* --- Word-by-word heading reveal ------------------------------------------------ */
+.motion-reveal[data-reveal="words"] {
+  --reveal-y: 10px;
+  --reveal-duration: 560ms;
+}
+
+.split-word {
+  display: inline-block;
+  overflow: hidden;
+  /* Room for Vietnamese diacritics above and descenders below the mask. */
+  padding: 0.18em 0.04em 0.12em;
+  margin: -0.18em -0.04em -0.12em;
+  vertical-align: top;
+}
+
+.split-word > span {
+  display: inline-block;
+  transition: transform 950ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--reveal-delay, 0ms) + var(--word-index, 0) * 70ms);
+}
+
+.motion-reveal:not(.is-visible) .split-word > span {
+  transform: translate3d(0, 115%, 0);
+}
+
+/* Kickers settle from wide tracking into place. */
+.motion-reveal .section-kicker {
+  transition:
+    letter-spacing 1200ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms),
+    opacity 700ms ease var(--reveal-delay, 0ms);
+}
+
+.motion-reveal:not(.is-visible) .section-kicker {
+  letter-spacing: 0.7em;
+  opacity: 0;
+}
+
+/* Portraits settle from a slight zoom inside their arches. */
+.couple-portrait-frame img {
+  transition: transform 1600ms cubic-bezier(0.22, 1, 0.36, 1) var(--reveal-delay, 0ms);
+}
+
+.couple-profile.motion-reveal:not(.is-visible) .couple-portrait-frame img {
+  transform: scale(1.16);
+}
+
+/* --- Calendar: a gold ring draws around the wedding day -------------------------- */
+.wedding-day-ring {
+  position: absolute;
+  inset: -7px;
+  width: calc(100% + 14px);
+  height: calc(100% + 14px);
+  overflow: visible;
+  pointer-events: none;
+  transform: rotate(-90deg);
+}
+
+.wedding-day-ring circle {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1400ms cubic-bezier(0.65, 0, 0.35, 1) calc(var(--reveal-delay, 0ms) + 500ms);
+}
+
+.wedding-calendar.motion-reveal:not(.is-visible) .wedding-day-ring circle {
+  stroke-dashoffset: 1;
+}
+
+.wedding-calendar.motion-reveal:not(.is-visible) .wedding-day i {
+  transform: scale(0);
+}
+
+.wedding-calendar.is-visible .wedding-day i {
+  animation: wedding-heart-pop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) calc(var(--reveal-delay, 0ms) + 1700ms) both;
+}
+
+@keyframes wedding-heart-pop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+/* --- Hero: arch photo that opens into a full-bleed "save the date" frame --------- */
+.hero-photo .hero-photo-wide,
+.hero-scene-caption {
+  display: none;
+}
+
+.hero-photo-frame {
+  position: relative;
+  place-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+/* Darkening veil behind the "save the date" caption; only visible once the caption fades in. */
+.hero-photo-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(20, 24, 16, 0.12), rgba(20, 24, 16, 0.58));
+  opacity: var(--hero-caption, 0);
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  /* Phones: the portrait sits in an arch that opens as it scrolls into view (no pinning). */
+  .hero-photo {
+    --hero-a: calc(1 - var(--hero-p, 0));
+    clip-path: inset(0 calc(var(--hero-a) * 6vw) 0 calc(var(--hero-a) * 6vw) round calc(var(--hero-a) * 44vw) calc(var(--hero-a) * 44vw) 0 0);
+  }
+
+  .hero-photo-portrait {
+    transform: scale(calc(1.1 - var(--hero-p, 0) * 0.1));
+  }
+}
+
+@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  .hero-scene {
+    position: relative;
+    height: 230svh;
+  }
+
+  .hero-scene > .hero {
+    position: sticky;
+    top: 0;
+  }
+
+  .hero-scene .hero::after {
+    opacity: calc(0.52 * (1 - var(--hero-p, 0)));
+  }
+
+  .hero-scene .hero-copy {
+    opacity: calc(1 - var(--hero-p, 0) * 1.8);
+    transform: translate3d(calc(var(--hero-p, 0) * -5vw), 0, 0) scale(calc(1 - var(--hero-p, 0) * 0.06));
+    transform-origin: left center;
+  }
+
+  .hero-scene .hero-photo {
+    --hero-a: calc(1 - var(--hero-p, 0));
+    position: absolute;
+    top: calc(var(--hero-a) * 7svh);
+    right: calc(var(--hero-a) * 5vw);
+    bottom: calc(var(--hero-a) * 7svh);
+    left: calc(var(--hero-a) * 52vw);
+    z-index: 5;
+    height: auto;
+    border-radius: calc(var(--hero-a) * 22vw) calc(var(--hero-a) * 22vw) calc(var(--hero-a) * 14px) calc(var(--hero-a) * 14px);
+    box-shadow: 0 30px 80px rgba(37, 48, 33, calc(0.2 * var(--hero-a)));
+  }
+
+  .hero-scene .hero-photo img {
+    object-fit: cover;
+    object-position: center 32%;
+  }
+
+  .hero-scene .hero-photo-portrait {
+    transform: scale(calc(1.12 - var(--hero-p, 0) * 0.12));
+  }
+
+  .hero-scene .hero-photo-wide {
+    display: block;
+    position: absolute;
+    inset: 0;
+    object-position: center 40%;
+    /* Iris wipe from the centre instead of a cross-fade, so the two photos never double-expose. */
+    clip-path: circle(calc(var(--hero-wide, 0) * 78%) at 50% 42%);
+    transform: scale(calc(1.08 - var(--hero-p, 0) * 0.08));
+  }
+
+  .hero-scene-caption {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+    color: #fff8ea;
+    text-align: center;
+    pointer-events: none;
+    opacity: var(--hero-caption, 0);
+    transform: translate3d(0, calc((1 - var(--hero-caption, 0)) * 48px), 0);
+    text-shadow: 0 2px 24px rgba(0, 0, 0, 0.28);
+  }
+
+  .hero-scene-caption p {
+    margin: 0;
+    color: #ecd9ae;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: calc(0.38em + (1 - var(--hero-caption, 0)) * 0.4em);
+    text-transform: uppercase;
+  }
+
+  .hero-scene-caption strong {
+    font-family: var(--display-serif);
+    font-size: clamp(64px, 8.5vw, 148px);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.04em;
+  }
+
+  .hero-scene-caption span {
+    font-family: var(--script);
+    font-size: clamp(42px, 4vw, 68px);
+    line-height: 1.1;
+  }
+}
+
+/* --- Story: horizontal film strip (wide screens) / editorial stack (phones) ------- */
+.story-section {
+  content-visibility: visible;
+}
+
+.story-film-track {
+  display: flex;
+  flex-direction: column;
+  gap: 64px;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.film-intro {
+  margin-bottom: 0;
+}
+
+.film-hint {
+  display: none;
+}
+
+.film-frame {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  background: linear-gradient(145deg, #c7c6ba, #efe9dc);
+  box-shadow: 0 24px 60px rgba(59, 67, 46, 0.14);
+}
+
+.film-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform:
+    translate3d(calc(var(--parallax-x, 0) * var(--film-drift, 0%)), calc(var(--parallax-shift, 0) * var(--parallax-range, 0%)), 0)
+    scale(var(--parallax-scale, 1));
+  will-change: transform;
+}
+
+.film-frame-arch {
+  align-self: center;
+  width: min(440px, 100%);
+  aspect-ratio: 3 / 4;
+  border-radius: 999px 999px 16px 16px;
+}
+
+.film-chapter {
+  max-width: 640px;
+}
+
+.film-chapter-label {
+  margin: 0;
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+.film-year {
+  margin: 8px 0 14px;
+  color: transparent;
+  font-family: var(--display-serif);
+  font-size: clamp(76px, 20vw, 140px);
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  -webkit-text-stroke: 1px var(--gold);
+}
+
+.film-chapter h3 {
+  margin: 0 0 16px;
+  font-family: var(--serif);
+  font-size: clamp(30px, 3vw, 44px);
+  font-weight: 400;
+  line-height: 1.1;
+}
+
+.film-text {
+  margin: 0;
+  color: var(--soft-ink-68);
+  font-size: 15.5px;
+  line-height: 1.8;
+  white-space: pre-line;
+}
+
+.film-collage {
+  position: relative;
+  padding-bottom: 20%;
+}
+
+.film-frame-main {
+  width: 88%;
+  aspect-ratio: 3 / 2;
+}
+
+.film-frame-detail {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 46%;
+  aspect-ratio: 3 / 2;
+  border: 8px solid var(--paper);
+}
+
+.film-finale {
+  display: grid;
+  gap: 32px;
+  justify-items: center;
+  text-align: center;
+}
+
+.film-finale-title {
+  margin: 10px 0 0;
+  font-family: var(--script);
+  font-size: clamp(46px, 10vw, 86px);
+  line-height: 1.1;
+}
+
+.film-finale-date {
+  margin: 14px 0 0;
+  color: var(--gold);
+  font-family: var(--display-serif);
+  font-size: 18px;
+  letter-spacing: 0.26em;
+}
+
+.film-progress {
+  display: none;
+}
+
+@media (min-width: 901px) and (prefers-reduced-motion: no-preference) {
+  .story-section {
+    padding: 0;
+  }
+
+  .story-film {
+    position: relative;
+  }
+
+  .story-film-viewport {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    overflow: hidden;
+  }
+
+  .story-film-track {
+    position: relative;
+    flex-direction: row;
+    align-items: center;
+    gap: clamp(56px, 6vw, 112px);
+    width: max-content;
+    height: 100%;
+    margin: 0;
+    padding: 0 12vw 0 8vw;
+    will-change: transform;
+  }
+
+  .film-intro {
+    flex: none;
+    width: clamp(340px, 30vw, 460px);
+    margin: 0;
+    text-align: left;
+  }
+
+  .film-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 30px;
+    color: var(--gold);
+    font-family: var(--serif);
+    font-size: 15px;
+    font-style: italic;
+  }
+
+  .film-hint i {
+    font-style: normal;
+    animation: film-hint-nudge 1.8s ease-in-out infinite;
+  }
+
+  .film-frame {
+    flex: none;
+    --film-drift: -7%;
+    --parallax-range: 0%;
+    --parallax-scale: 1.16;
+  }
+
+  .film-frame-arch {
+    width: auto;
+    height: 72svh;
+  }
+
+  .film-chapter {
+    flex: none;
+    /* Size to the widest line (usually the big year) so it never runs under the next photo. */
+    width: max-content;
+    min-width: clamp(360px, 30vw, 480px);
+  }
+
+  .film-chapter h3,
+  .film-text {
+    max-width: clamp(360px, 30vw, 480px);
+  }
+
+  .film-year {
+    font-size: clamp(96px, 9vw, 160px);
+    white-space: nowrap;
+  }
+
+  .film-collage {
+    flex: none;
+    width: clamp(560px, 46vw, 820px);
+    height: 74svh;
+    padding: 0;
+  }
+
+  .film-frame-main {
+    position: absolute;
+    top: 6%;
+    left: 0;
+    width: 82%;
+  }
+
+  .film-frame-detail {
+    width: 44%;
+  }
+
+  .film-finale {
+    flex: none;
+    grid-template-columns: auto auto;
+    align-items: center;
+    gap: 64px;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .film-frame-finale {
+    height: 64svh;
+  }
+
+  .film-progress {
+    position: absolute;
+    /* Top of the frame, clear of the header, so the floating music player never covers it. */
+    top: calc(72px + 4svh);
+    right: 8vw;
+    left: 8vw;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    color: var(--soft-ink-62);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .film-progress-track {
+    position: relative;
+    flex: 1;
+    height: 1px;
+    background: rgba(79, 93, 54, 0.22);
+  }
+
+  .film-progress-track > span {
+    position: absolute;
+    inset: -0.5px 0;
+    background: var(--gold);
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+
+  .film-progress-count {
+    font-family: var(--serif);
+    font-size: 14px;
+    letter-spacing: 0.12em;
+  }
+}
+
+@keyframes film-hint-nudge {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-reveal:not(.is-visible) .split-word > span,
+  .split-word > span {
+    transform: none;
+  }
+
+  .motion-reveal:not(.is-visible) .section-kicker {
+    letter-spacing: 0.38em;
+    opacity: 1;
+  }
+
+  .couple-profile.motion-reveal:not(.is-visible) .couple-portrait-frame img,
+  .film-frame img,
+  .hero-photo-portrait {
+    transform: none;
+  }
+
+  .wedding-calendar.motion-reveal:not(.is-visible) .wedding-day-ring circle {
+    stroke-dashoffset: 0;
+  }
+
+  .wedding-calendar.motion-reveal:not(.is-visible) .wedding-day i {
+    transform: none;
+  }
+}
+
+
+/* --- Phones / portrait: short pinned hero + stacked album pages -------------------- */
+.film-page {
+  display: contents;
+}
+
+@media (max-width: 900px) and (prefers-reduced-motion: no-preference) {
+  /* Hero: the photo wrapper becomes a tall track; its frame pins and opens to full screen. */
+  .hero-scene .hero-photo {
+    display: block;
+    height: 190svh;
+    min-height: 0;
+    aspect-ratio: auto;
+    overflow: visible;
+    clip-path: none;
+    background: none;
+  }
+
+  .hero-scene .hero-photo::before {
+    display: none;
+  }
+
+  .hero-scene .hero-photo-frame {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    background: linear-gradient(145deg, #d9d8c9, #f3eee3 65%, #c4c8b2);
+    clip-path: inset(
+      calc(var(--hero-a) * 13svh) calc(var(--hero-a) * 8vw) calc(var(--hero-a) * 7svh) calc(var(--hero-a) * 8vw)
+      round calc(var(--hero-a) * 42vw) calc(var(--hero-a) * 42vw) calc(var(--hero-a) * 16px) calc(var(--hero-a) * 16px)
+    );
+  }
+
+  .hero-scene .hero-photo img {
+    object-fit: cover;
+    object-position: center 30%;
+  }
+
+  .hero-scene .hero-photo-portrait {
+    transform: scale(calc(1.12 - var(--hero-p, 0) * 0.12));
+  }
+
+  .hero-scene .hero-photo .hero-photo-wide {
+    display: block;
+    position: absolute;
+    inset: 0;
+    object-position: 50% 40%;
+    clip-path: circle(calc(var(--hero-wide, 0) * 80%) at 50% 42%);
+  }
+
+  .hero-scene-caption {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    padding: 0 20px;
+    color: #fff8ea;
+    text-align: center;
+    pointer-events: none;
+    opacity: var(--hero-caption, 0);
+    transform: translate3d(0, calc((1 - var(--hero-caption, 0)) * 36px), 0);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .hero-scene-caption p {
+    margin: 0;
+    color: #ecd9ae;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.36em;
+    text-transform: uppercase;
+  }
+
+  .hero-scene-caption strong {
+    font-family: var(--display-serif);
+    font-size: clamp(42px, 12.5vw, 84px);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .hero-scene-caption span {
+    font-family: var(--script);
+    font-size: clamp(38px, 10vw, 60px);
+    line-height: 1.1;
+  }
+
+  /* Story: each chapter is a pinned page; the next one slides up over it like an album. */
+  .story-section {
+    padding: 0;
+  }
+
+  .story-film-track {
+    gap: 0;
+    width: 100%;
+  }
+
+  .film-page {
+    position: sticky;
+    /* Negative for pages taller than the screen (set from JS) so their bottom is reachable. */
+    top: var(--page-top, 0px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 44px;
+    min-height: 100svh;
+    padding: 104px max(20px, 6vw) 64px;
+    background: var(--story-surface);
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -18px 44px rgba(37, 48, 33, 0.12);
+    transform: scale(calc(1 - var(--page-cover, 0) * 0.07));
+    /* Shrink around the centre of the part that is actually on screen. */
+    transform-origin: 50% calc(50svh - var(--page-top, 0px));
+  }
+
+  .film-page:first-child {
+    padding-top: 120px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .film-page::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(20, 24, 16, 0.38);
+    opacity: var(--page-cover, 0);
+    pointer-events: none;
+  }
+
+  .film-page > :not(.film-frame) {
+    width: min(560px, 100%);
+    margin-inline: auto;
+  }
+
+  .film-page > .film-frame-arch {
+    width: min(420px, 86%);
+  }
 }
