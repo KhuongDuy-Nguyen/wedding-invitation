@@ -42,3 +42,4 @@ next-env.d.ts
 /work/
 save_logo.*
 /.idea
+/.tmp-shots

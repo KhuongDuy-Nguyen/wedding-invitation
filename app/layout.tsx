@@ -61,6 +61,23 @@ const themeInitializer = `
   } catch (_) {}
 `;
 
+// Runs from the exported HTML, independently of the application's JS chunks.
+// A slow/failed hydration must not leave guests trapped behind the envelope.
+const invitationFallback = `
+  document.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!(target instanceof Element) || !target.closest("[data-open-invitation]")) return;
+    window.setTimeout(function () {
+      if (!document.querySelector(".invitation-gate")) return;
+      document.documentElement.dataset.invitationFallback = "open";
+      document.documentElement.classList.remove("invitation-locked");
+      document.body.classList.remove("invitation-locked");
+      document.body.classList.add("invitation-ready");
+      window.dispatchEvent(new Event("invitation-fallback-open"));
+    }, 2500);
+  }, true);
+`;
+
 const rootAssetStyles = {
   "--botanical-frame-image": `url("${withBasePath("/images/decor/botanical-frame.webp")}")`,
   "--gallery-portrait-image": `url("${withBasePath("/images/01-ROZ02396.webp")}")`,
@@ -72,6 +89,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="vi" style={rootAssetStyles} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />
+        <script dangerouslySetInnerHTML={{ __html: invitationFallback }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Fonts are shared by the root App Router layout and load once for the site. */}

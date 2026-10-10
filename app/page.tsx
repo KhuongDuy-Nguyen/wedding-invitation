@@ -69,6 +69,14 @@ function clamp(value: number, min = 0, max = 1): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function readStoredTheme(): string | null {
+  try {
+    return window.localStorage.getItem("wedding-theme");
+  } catch {
+    return null;
+  }
+}
+
 function smoothstep(edge0: number, edge1: number, value: number): number {
   const t = clamp((value - edge0) / (edge1 - edge0));
   return t * t * (3 - 2 * t);
@@ -184,6 +192,19 @@ export default function WeddingInvitation() {
   const storyTrackRef = useRef<HTMLDivElement>(null);
   const filmProgressRef = useRef<HTMLSpanElement>(null);
   const filmCounterRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const syncFallback = () => setInvitationOpen(true);
+    window.addEventListener("invitation-fallback-open", syncFallback);
+    // The visitor may have opened the static page before React finished loading.
+    const frame = window.requestAnimationFrame(() => {
+      if (document.documentElement.dataset.invitationFallback === "open") syncFallback();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("invitation-fallback-open", syncFallback);
+    };
+  }, []);
 
   const triggerFireworks = useCallback((originX?: number, originY?: number, count = 75) => {
     const canvas = canvasRef.current;
@@ -336,7 +357,7 @@ export default function WeddingInvitation() {
   useEffect(() => {
     const root = document.documentElement;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const storedTheme = window.localStorage.getItem("wedding-theme");
+    const storedTheme = readStoredTheme();
     const initialTheme: Theme =
       storedTheme === "dark" || storedTheme === "light"
         ? storedTheme
@@ -349,7 +370,7 @@ export default function WeddingInvitation() {
     const syncThemeFrame = window.requestAnimationFrame(() => setTheme(initialTheme));
 
     const followSystemTheme = (event: MediaQueryListEvent) => {
-      if (window.localStorage.getItem("wedding-theme")) return;
+      if (readStoredTheme()) return;
       const nextTheme: Theme = event.matches ? "dark" : "light";
       root.dataset.theme = nextTheme;
       root.style.colorScheme = nextTheme;
@@ -400,6 +421,8 @@ export default function WeddingInvitation() {
         e.preventDefault();
       };
       const preventKeyScroll = (e: KeyboardEvent) => {
+        // Let native buttons handle Space/Enter activation while the gate is locked.
+        if (e.target instanceof Element && e.target.closest("button")) return;
         if (
           ["Space", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(e.code) ||
           [" ", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(e.key)
@@ -409,14 +432,13 @@ export default function WeddingInvitation() {
       };
 
       window.addEventListener("wheel", preventScroll, { passive: false });
-      window.addEventListener("touchmove", preventScroll, { passive: false });
+      // CSS locks touch scrolling; cancelling touchmove can suppress a tap's click.
       window.addEventListener("keydown", preventKeyScroll, { passive: false });
 
       return () => {
         document.documentElement.classList.remove("invitation-locked");
         document.body.classList.remove("invitation-locked");
         window.removeEventListener("wheel", preventScroll);
-        window.removeEventListener("touchmove", preventScroll);
         window.removeEventListener("keydown", preventKeyScroll);
       };
     }
@@ -760,7 +782,11 @@ export default function WeddingInvitation() {
     const nextTheme: Theme = theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = nextTheme;
     document.documentElement.style.colorScheme = nextTheme;
-    window.localStorage.setItem("wedding-theme", nextTheme);
+    try {
+      window.localStorage.setItem("wedding-theme", nextTheme);
+    } catch {
+      // Saving a preference is optional when browser storage is unavailable.
+    }
     setTheme(nextTheme);
   };
 
@@ -1005,6 +1031,7 @@ export default function WeddingInvitation() {
           <button
             type="button"
             className="gate-skip-btn"
+            data-open-invitation
             onClick={skipInvitation}
             aria-label="Vào xem thiệp ngay không cần hiệu ứng"
           >
@@ -1083,6 +1110,7 @@ export default function WeddingInvitation() {
               <div className="envelope-seal-wrapper">
                 <button
                   className="envelope-seal-btn"
+                  data-open-invitation
                   type="button"
                   aria-label="Chạm để mở thiệp cưới"
                   onClick={openInvitation}
@@ -1112,11 +1140,17 @@ export default function WeddingInvitation() {
               </div>
 
               {/* Floating Call to Action Prompt */}
-              <div className="envelope-open-prompt" aria-hidden="true">
-                <span className="prompt-sparkle">✧</span>
+              <button
+                className="envelope-open-prompt"
+                data-open-invitation
+                type="button"
+                onClick={openInvitation}
+                disabled={invitationOpening}
+              >
+                <span className="prompt-sparkle" aria-hidden="true">✧</span>
                 <span className="prompt-text">Chạm mở thiệp</span>
-                <span className="prompt-sparkle">✧</span>
-              </div>
+                <span className="prompt-sparkle" aria-hidden="true">✧</span>
+              </button>
             </div>
           </div>
         </section>
