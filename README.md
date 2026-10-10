@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="./public/images/logo/wedding-lockup.webp" width="160" alt="Duy and Lan wedding monogram" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./public/images/logo/logo-gold.webp" />
+  <img src="./public/images/logo/logo.webp" width="160" alt="Duy and Lan wedding monogram" />
+</picture>
 
 # Duy & Lan Wedding Invitation
 
